@@ -3,4 +3,7 @@
 
     <string name="app_name">ParanoidAndroid</string>
 
+    <!-- Button for sending Command to Glass !-->
+    <string name="send_ok_glass">OK</string>
+
 </resources>

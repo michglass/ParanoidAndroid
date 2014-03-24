@@ -1,4 +1,4 @@
-package com.abq.servicetest.servicetest;
+package com.abq.paranoidandroid.paranoidandroid;
 
 import android.app.Service;
 import android.bluetooth.BluetoothAdapter;
