@@ -222,6 +222,7 @@ public class BluetoothService extends Service {
             case STRING_MESSAGE:
                 msg.what = STRING_MESSAGE;
                 msg.obj =  message;
+
                 break;
             case BITMAP_MESSAGE:
                 msg.what = BITMAP_MESSAGE;

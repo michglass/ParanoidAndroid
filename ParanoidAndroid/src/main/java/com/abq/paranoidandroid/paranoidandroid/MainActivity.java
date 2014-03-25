@@ -247,7 +247,7 @@ public class MainActivity extends Activity {
                     break;
                 case BluetoothService.STRING_MESSAGE:
                     String s = (String) msg.obj;
-                    //TODO Send message to a contact
+                    Log.v(TAG, s);
                     Toast.makeText(getApplicationContext(),
                             s, Toast.LENGTH_SHORT).show();
                     break;
