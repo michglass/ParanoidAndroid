@@ -11,11 +11,14 @@ import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
+import android.telephony.SmsManager;
 import android.util.Log;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Toast;
+
+import java.util.ArrayList;
 
 
 public class MainActivity extends Activity {
@@ -248,6 +251,14 @@ public class MainActivity extends Activity {
                 case BluetoothService.STRING_MESSAGE:
                     String s = (String) msg.obj;
                     Log.v(TAG, s);
+                    String stringList[] = s.split(";");
+                    if(stringList.length == 3){
+                        if(stringList[0] == "comm"){
+                            SmsManager smsManager = SmsManager.getDefault();
+                            smsManager.sendTextMessage(stringList[1], null, stringList[2], null, null);
+                            Log.v(TAG, stringList[1] + " " + stringList[2]);
+                        }
+                    }
                     Toast.makeText(getApplicationContext(),
                             s, Toast.LENGTH_SHORT).show();
                     break;
