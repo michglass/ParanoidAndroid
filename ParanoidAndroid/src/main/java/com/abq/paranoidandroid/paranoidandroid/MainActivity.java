@@ -248,6 +248,8 @@ public class MainActivity extends Activity {
                 case BluetoothService.STRING_MESSAGE:
                     String s = (String) msg.obj;
                     //TODO Send message to a contact
+                    Toast.makeText(getApplicationContext(),
+                            s, Toast.LENGTH_SHORT).show();
                     break;
                 case BluetoothService.BITMAP_MESSAGE:
                     Log.v(TAG, "Bitmap Message");
