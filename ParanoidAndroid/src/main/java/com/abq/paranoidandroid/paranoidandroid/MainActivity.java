@@ -19,6 +19,7 @@ import android.view.WindowManager;
 import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
 
 public class MainActivity extends Activity {
@@ -251,12 +252,14 @@ public class MainActivity extends Activity {
                 case BluetoothService.STRING_MESSAGE:
                     String s = (String) msg.obj;
                     Log.v(TAG, s);
-                    String stringList[] = s.split(";");
-                    if(stringList.length == 3){
-                        if(stringList[0] == "comm"){
+                    ArrayList<String> stringList = new ArrayList<String>(Arrays.asList(s.split(";")));
+                    if(stringList.size() == 3){
+                        Log.v(TAG, "Message prefix: " + stringList.get(0));
+                        if(stringList.get(0).equals("comm")){
+                            Log.v(TAG, "Sending SMS...");
                             SmsManager smsManager = SmsManager.getDefault();
-                            smsManager.sendTextMessage(stringList[1], null, stringList[2], null, null);
-                            Log.v(TAG, stringList[1] + " " + stringList[2]);
+                            smsManager.sendTextMessage(stringList.get(1), null, stringList.get(2), null, null);
+                            Log.v(TAG, "SMS sending complete with message: " + stringList.get(1) + " " + stringList.get(2));
                         }
                     }
                     Toast.makeText(getApplicationContext(),
