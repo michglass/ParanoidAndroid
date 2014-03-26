@@ -49,10 +49,13 @@ public class MainActivity extends Activity {
         Log.v(TAG, "On Create");
         super.onCreate(savedInstanceState);
 
-        // keep screen from dimming
+        // fullscreen activity
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
+
+        // keep screen from dimming
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         setContentView(R.layout.activity_main);
 
@@ -101,12 +104,11 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         Log.v(TAG, "On Destroy");
+        super.onDestroy();
 
         // stop service
         stopService(new Intent(this, BluetoothService.class));
         BluetoothService.BOUND_COUNT = 0;
-
-        super.onDestroy();
     }
 
     public void OnButtonClick(View v) {
@@ -229,8 +231,7 @@ public class MainActivity extends Activity {
                     }
                     break;
                 case BluetoothService.MESSAGE_WRITE:
-                    Toast.makeText(getApplicationContext(),
-                            "Write to OutStream", Toast.LENGTH_SHORT).show();
+                    Log.v(TAG, "Sending message to Glass");
                     break;
                 case BluetoothService.MESSAGE_RESTART:
                     Toast.makeText(getApplicationContext(),
@@ -240,8 +241,7 @@ public class MainActivity extends Activity {
                     sendMessageToService(BluetoothService.MESSAGE_RESTART);
                     break;
                 case BluetoothService.WAIT_FOR_CONNECTION:
-                    Toast.makeText(getApplicationContext(),
-                            "Wait for Connection", Toast.LENGTH_SHORT).show();
+                    Log.v(TAG, "Glass App hasn't started yet");
                     break;
                 case BluetoothService.GLASS_STOPPED:
                     Toast.makeText(getApplicationContext(),
@@ -262,8 +262,6 @@ public class MainActivity extends Activity {
                             Log.v(TAG, "SMS sending complete with message: " + stringList.get(1) + " " + stringList.get(2));
                         }
                     }
-                    Toast.makeText(getApplicationContext(),
-                            s, Toast.LENGTH_SHORT).show();
                     break;
                 case BluetoothService.BITMAP_MESSAGE:
                     Log.v(TAG, "Bitmap Message");

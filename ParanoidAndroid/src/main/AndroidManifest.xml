@@ -17,7 +17,8 @@
 
         <activity
             android:name="com.abq.paranoidandroid.paranoidandroid.MainActivity"
-            android:label="@string/app_name" >
+            android:label="@string/app_name"
+            android:screenOrientation="portrait" > <!-- Keep Screen From Rotating !-->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
