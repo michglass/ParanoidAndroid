@@ -233,13 +233,6 @@ public class MainActivity extends Activity {
                 case BluetoothService.MESSAGE_WRITE:
                     Log.v(TAG, "Sending message to Glass");
                     break;
-                case BluetoothService.MESSAGE_RESTART:
-                    Toast.makeText(getApplicationContext(),
-                            "Restart Listening", Toast.LENGTH_SHORT).show();
-
-                    // send message to service that it has to restart the connection
-                    sendMessageToService(BluetoothService.MESSAGE_RESTART);
-                    break;
                 case BluetoothService.WAIT_FOR_CONNECTION:
                     Log.v(TAG, "Glass App hasn't started yet");
                     break;

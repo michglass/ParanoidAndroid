@@ -201,6 +201,7 @@ public class BluetoothService extends Service {
                 case MESSAGE_RESTART:
                     Log.v(TAG, "Restart Listening");
                     restartListeningToIncomingRequests();
+                    break;
             }
         }
     }
@@ -524,13 +525,13 @@ public class BluetoothService extends Service {
                 Log.v(TAG, "Try connecting through socket");
                 mmBtSocket.connect();
             } catch (IOException connectException) {
+                // try closing socket
+                Log.v(TAG, "Unable to Connect");
 
                 // unable to connect, start listening to incoming requests
                 connected = false;
                 listenToIncomingRequests(mbtAdapter);
 
-                // try closing socket
-                Log.v(TAG, "Unable to Connect");
                 try {
                     Log.v(TAG, "Try Closing Socket");
                     mmBtSocket.close();
@@ -724,6 +725,7 @@ public class BluetoothService extends Service {
                     break;
                 }
             }
+            Log.v(TAG, "Run Return");
         }
         /**
          * Write
@@ -741,15 +743,16 @@ public class BluetoothService extends Service {
                 Log.e(TAG, "Write Failed", ioE);
 
                 // send message to main activity to restart listening
-                sendMessageToClient(INT_MESSAGE, BluetoothService.MESSAGE_RESTART);
+                // sendMessageToClient(INT_MESSAGE, BluetoothService.MESSAGE_RESTART);
             }
         }
         /**
          * Call from activity to shut down connection
          */
         public void cancel() {
-            Log.v(TAG, "cancel bt socket");
+
             try {
+                Log.v(TAG, "Try closing Socket");
                 mmBTSocket.close();
             } catch (IOException ioE) {
                 Log.e(TAG, "closing socket failed", ioE);
