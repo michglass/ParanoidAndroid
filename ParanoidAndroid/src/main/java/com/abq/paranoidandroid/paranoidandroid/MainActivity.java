@@ -1,16 +1,21 @@
 package com.abq.paranoidandroid.paranoidandroid;
 
 import android.app.Activity;
+import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
+import android.os.ParcelFileDescriptor;
 import android.os.RemoteException;
+import android.os.Vibrator;
 import android.telephony.SmsManager;
 import android.util.Log;
 import android.view.View;
@@ -18,6 +23,12 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Toast;
 
+import com.android.future.usb.UsbAccessory;
+import com.android.future.usb.UsbManager;
+
+import java.io.FileDescriptor;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -31,6 +42,28 @@ public class MainActivity extends Activity {
     private Messenger mBluetoothServiceMessenger;
     private boolean mBound;
     private final Messenger clientMessenger = new Messenger(new ServiceHandler());
+
+    // USB vars
+    // Connection has to be permitted by user
+    private PendingIntent mPermissionIntent; // sends ACTION_USB_PERMISSION with accepted or denied flag
+    private static final String ACTION_USB_PERMISSION = "com.abq.arduinotest.arduinotest.USB_PERMISSION";
+    private boolean mPermissionRequestPending;
+
+    // sys service, manages interactions with sys port (requests/checks permission to connect to device)
+    private UsbManager mUsbManager;
+    private UsbAccessory mUsbAccessory; // reference to connected accessory (arduino board)
+    private ParcelFileDescriptor mFileDescriptor; // Descriptor obtained when connection is established
+    private FileInputStream mInputStream;
+    // private FileOutputStream mOutputStream;
+
+    // Protocol Vars, same as in arduino sketch (first 2 bytes of protocol)
+    private static final byte COMMAND_BUTTON = 0x1;
+    private static final byte TARGET_BUTTON = 0x1;
+    private static final byte VALUE_PRESSED = 0x1; // 1, if button pressed
+    private static final byte VALUE_NOTPRESSED = 0x0; // 0, if button not pressed
+
+    private Vibrator mVibrator;
+    private boolean isVibrating;
 
     /**
      * Activity Lifecycle methods
@@ -64,6 +97,17 @@ public class MainActivity extends Activity {
          */
         // start service
         startService(new Intent(this, BluetoothService.class));
+
+        // USB Stuff
+        mUsbManager = UsbManager.getInstance(this);
+        mPermissionIntent = PendingIntent.getBroadcast(this, 0,
+                new Intent(ACTION_USB_PERMISSION), 0);
+        IntentFilter intentFilter = new IntentFilter(ACTION_USB_PERMISSION);
+        intentFilter.addAction(UsbManager.ACTION_USB_ACCESSORY_DETACHED);
+        registerReceiver(mUsbReceiver, intentFilter);
+
+        mVibrator = ((Vibrator) getSystemService(VIBRATOR_SERVICE));
+        isVibrating = false;
     }
     /**
      * On Start
@@ -81,6 +125,35 @@ public class MainActivity extends Activity {
         }
     }
     /**
+     * On Resume
+     * Start USB connection
+     */
+    @Override
+    protected void onResume() {
+        Log.v(TAG, "On Resume");
+        super.onResume();
+
+        if(mInputStream != null) { return; }
+
+        UsbAccessory[] accessories = mUsbManager.getAccessoryList();
+        UsbAccessory accessory = (accessories == null ? null : accessories[0]);
+        if(accessory != null) {
+            if(mUsbManager.hasPermission(accessory)) {
+                Log.v(TAG, "Has Permission");
+                openAccessory(accessory);
+            } else {
+                synchronized (mUsbReceiver) {
+                    if(!mPermissionRequestPending) {
+                        Log.v(TAG, "Doesn't have Permission");
+                        // request users permission to connect to USB device
+                        mUsbManager.requestPermission(accessory, mPermissionIntent);
+                        mPermissionRequestPending = true;
+                    }
+                }
+            }
+        } else { Log.v(TAG, "Accessory is NULL"); }
+    }
+    /**
      * On Stop
      * Unbind from Service
      */
@@ -96,6 +169,10 @@ public class MainActivity extends Activity {
             unbindService(mConnection);
             mBound = false;
         }
+
+        // USB
+        closeAccessory();
+        stopVibrate();
     }
     /**
      * On Destroy
@@ -109,6 +186,9 @@ public class MainActivity extends Activity {
         // stop service
         stopService(new Intent(this, BluetoothService.class));
         BluetoothService.BOUND_COUNT = 0;
+
+        // USB
+        unregisterReceiver(mUsbReceiver);
     }
 
     public void OnButtonClick(View v) {
@@ -260,6 +340,118 @@ public class MainActivity extends Activity {
                     Log.v(TAG, "Bitmap Message");
                     break;
             }
+        }
+    }
+
+    private final BroadcastReceiver mUsbReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+
+            if(ACTION_USB_PERMISSION.equals(action)) {
+                synchronized (this) {
+                    UsbAccessory accessory = UsbManager.getAccessory(intent);
+
+                    if(intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
+                        openAccessory(accessory);
+                    } else { Log.v(TAG, "Permission denied for: " + accessory); }
+                    mPermissionRequestPending = false;
+                }
+            } else if(UsbManager.ACTION_USB_ACCESSORY_DETACHED.equals(action)) {
+                UsbAccessory accessory = UsbManager.getAccessory(intent);
+                if(accessory != null && accessory.equals(mUsbAccessory)) {
+                    closeAccessory();
+                }
+            }
+        }
+    };
+
+
+    // open accessory
+    private void openAccessory(UsbAccessory acc) {
+
+        mFileDescriptor = mUsbManager.openAccessory(acc);
+        if(mFileDescriptor != null) {
+            mUsbAccessory = acc;
+            FileDescriptor fileDescriptor = mFileDescriptor.getFileDescriptor();
+
+            mInputStream = new FileInputStream(fileDescriptor);
+
+            Thread thread = new Thread (null, commRunnable, TAG);
+            thread.start();
+            Log.v(TAG, "Accessory open");
+        } else { Log.v(TAG, "Accessory open fail"); }
+    }
+
+    // close accessory
+    private void closeAccessory() {
+
+        try {
+            if(mFileDescriptor != null) {
+                mFileDescriptor.close();
+                Log.v(TAG, "Try File Desc Close");
+            }
+        } catch(IOException ioE) {
+            Log.e(TAG, "File Desc Close Fail, ioE");
+        } finally {
+            mFileDescriptor = null;
+            mUsbAccessory = null;
+        }
+    }
+
+    // Communication Runnable
+    Runnable commRunnable = new Runnable() {
+        @Override
+        public void run() {
+            Log.v(TAG, "Run");
+
+            int ret = 0;
+            final byte[] buffer = new byte[3];
+
+            while (ret >= 0) {
+                try {
+                    ret = mInputStream.read(buffer);
+                    Log.v(TAG, "Try read inBuffer");
+                } catch (IOException ioE) {
+                    Log.e(TAG, "Read inBuffer Failed");
+                    break;
+                }
+
+                switch (buffer[0]) {
+                    case COMMAND_BUTTON:
+
+                        if(buffer[1] == TARGET_BUTTON) {
+                            if(buffer[2] == VALUE_PRESSED) {
+                                Log.v(TAG, "Button Pressed");
+                                sendMessageToService(BluetoothService.GLASS_OK);
+                                startVibrate();
+                            } else if(buffer[2] == VALUE_NOTPRESSED) {
+                                Log.v(TAG, "Button not Pressed");
+                                stopVibrate();
+                            }
+                        }
+                        break;
+                    default:
+                        Log.v(TAG, "Unkown Msg: " + buffer[0]);
+                        break;
+                }
+            }
+        }
+    };
+
+    // start vibrate
+    private void startVibrate() {
+        if(mVibrator != null && !isVibrating) {
+            Log.v(TAG, "Start Vibrating");
+            isVibrating = true;
+            mVibrator.vibrate(250);
+        }
+    }
+    private void stopVibrate() {
+        if(mVibrator != null && isVibrating) {
+            Log.v(TAG, "Stop Vibrating");
+            isVibrating = false;
+            mVibrator.cancel();
         }
     }
 }
