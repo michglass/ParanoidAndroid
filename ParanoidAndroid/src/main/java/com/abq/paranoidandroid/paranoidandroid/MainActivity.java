@@ -36,6 +36,7 @@ import org.json.JSONObject;
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -297,7 +298,9 @@ public class MainActivity extends Activity {
 
             case R.id.sendOKButton:
                 Log.v(TAG, "Send OK to Service");
-                sendMessageToService(BluetoothService.GLASS_OK);
+                byte[] okCommand = ByteBuffer.allocate(4).putInt(BluetoothService.GLASS_OK).array();
+                sendToGlass(okCommand);
+                //sendMessageToService(BluetoothService.GLASS_OK);
                 break;
             /*
             case R.id.sendBackButton:
@@ -305,6 +308,25 @@ public class MainActivity extends Activity {
                 sendMessageToService(BluetoothService.GLASS_BACK);
                 break;
                 */
+        }
+    }
+
+    /**
+     * Send SMS
+     * Parses a string from glass and sends it as an SMS
+     * @param parsedMsg string that is parsed as phone number + message
+     */
+    private void sendSMS(String parsedMsg) {
+        Log.v(TAG, parsedMsg);
+        ArrayList<String> stringList = new ArrayList<String>(Arrays.asList(parsedMsg.split(";")));
+        if(stringList.size() == 3){
+            Log.v(TAG, "Message prefix: " + stringList.get(0));
+            if(stringList.get(0).equals("comm")){
+                Log.v(TAG, "Sending SMS...");
+                SmsManager smsManager = SmsManager.getDefault();
+                smsManager.sendTextMessage(stringList.get(1), null, stringList.get(2), null, null);
+                Log.v(TAG, "SMS sending complete with message: " + stringList.get(1) + " " + stringList.get(2));
+            }
         }
     }
 
@@ -342,9 +364,17 @@ public class MainActivity extends Activity {
         }
     };
     /**
-     * Send Message To Service
-     * Sends a message over the Service to Android
-     * @param message Command (right now just OK)
+     * Send To Glass
+     * Send a message(byte array) to glass
+     * @param msgForGlass msg that you want to send to glass
+     */
+    private void sendToGlass(byte[] msgForGlass) {
+        sendMessageToService(BluetoothService.GLASS_DATA, msgForGlass);
+    }
+    /**
+     * Send Message To Service (1)
+     * Send a non-Glass message to Service
+     * @param message Message that will not be transfered to Glass
      */
     private void sendMessageToService(int message) {
         Message msg = new Message();
@@ -367,6 +397,23 @@ public class MainActivity extends Activity {
 
         try {
             Log.v(TAG, "Try contacting Service");
+            mBluetoothServiceMessenger.send(msg);
+        } catch (RemoteException remE) {
+            Log.e(TAG, "Couldn't contact Service", remE);
+        }
+    }
+    /**
+     * Send Message To Service (2)
+     * Send a message to the Service that will be transmitted to Glass
+     * @param glassMsg byte array that represents the glass data
+     * @param w What field for msg object
+     */
+    private void sendMessageToService(int w, byte[] glassMsg) {
+        Message msg = new Message();
+        msg.what = w;
+        msg.obj = glassMsg;
+        try {
+            Log.v(TAG, "Try contacting service");
             mBluetoothServiceMessenger.send(msg);
         } catch (RemoteException remE) {
             Log.e(TAG, "Couldn't contact Service", remE);
@@ -441,23 +488,17 @@ public class MainActivity extends Activity {
                     // send message to service that it has to restart the connection
                     sendMessageToService(BluetoothService.MESSAGE_RESTART);
                     break;
-                case BluetoothService.STRING_MESSAGE:
-                    String s = (String) msg.obj;
-                    Log.v(TAG, s);
-                    ArrayList<String> stringList = new ArrayList<String>(Arrays.asList(s.split(";")));
-                    if(stringList.size() == 3){
-                        Log.v(TAG, "Message prefix: " + stringList.get(0));
-                        if(stringList.get(0).equals("comm")){
-                            Log.v(TAG, "Sending SMS...");
-                            SmsManager smsManager = SmsManager.getDefault();
-                            smsManager.sendTextMessage(stringList.get(1), null, stringList.get(2), null, null);
-                            Log.v(TAG, "SMS sending complete with message: " + stringList.get(1) + " " + stringList.get(2));
-                        }
-                    }
+                case BluetoothService.GLASS_MESSAGE:
+                    //TODO Do sth with message from Glass
+                    byte[] glassMsg = (byte[]) msg.obj;
+                /*case BluetoothService.STRING_MESSAGE:
+
+
+
                     break;
                 case BluetoothService.BITMAP_MESSAGE:
                     Log.v(TAG, "Bitmap Message");
-                    break;
+                    break; */
             }
         }
     }

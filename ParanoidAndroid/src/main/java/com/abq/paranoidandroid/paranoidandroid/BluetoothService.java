@@ -60,14 +60,18 @@ public class BluetoothService extends Service {
 
     // Messages from/to Glass
     public static final int GLASS_STOPPED = 9; // (== THIS_STOPPED on Glass)
+    public static final int GLASS_DATA = 14; // Indicating to send a message to glass via bt
+    public static final int GLASS_MESSAGE = 11; // indicating that we have received a msg from glass
     public static final int GLASS_OK = 10;
+/*
+    //TODO Delete if new v works
     public static final int GLASS_BACK = 11;
     public static final int GLASS_DATA = 14;
 
     // Special Messages
     public static final int INT_MESSAGE = 1;
     public static final int STRING_MESSAGE = 2;
-    public static final int BITMAP_MESSAGE = 3;
+    public static final int BITMAP_MESSAGE = 3; */
 
     // Service Variables
     // Messenger that gets puplished to client
@@ -151,7 +155,10 @@ public class BluetoothService extends Service {
     public void onDestroy() {
         Log.v(TAG, "Destroy Service");
 
-        sendToGlass(THIS_STOPPED);
+        //TODO maybe just send a byte instead of a byte array
+        byte[] stopMsg = ByteBuffer.allocate(4).putInt(THIS_STOPPED).array();
+        sendToGlass(stopMsg);
+
         // Disconnect from Bluetooth
         disconnect();
 
@@ -170,18 +177,21 @@ public class BluetoothService extends Service {
 
             switch (msg.what) {
 
-                case GLASS_OK:
+                //TODO Delete if new v works
+                /*case GLASS_OK:
                     Log.v(TAG, "Glass OK: " + GLASS_OK);
 
                     // send OK command to Glass
                     sendToGlass(GLASS_OK);
-                    break;
-                case GLASS_BACK:
-                    Log.v(TAG, "Glass Back: " + GLASS_BACK);
-
-                    // send Back Command to Glass
-                    sendToGlass(GLASS_BACK);
-                    break;
+                    break; */
+                case GLASS_DATA:
+                    byte[] glassmsg;
+                    if(msg.obj != null) {
+                        glassmsg = (byte[]) msg.obj;
+                        sendToGlass(glassmsg);
+                    }
+                    else
+                        Log.e(TAG, "MSG for Glass NULL");
                 case REGISTER_CLIENT:
                     Log.v(TAG, "Register Client");
                     BluetoothService.BOUND_COUNT++;
@@ -189,14 +199,11 @@ public class BluetoothService extends Service {
 
                     // register Client to be able to send Messages back
                     mClientMessenger = msg.replyTo;
-
-                    //sendMessageToClient(TestService.REGISTER_CLIENT);
                     break;
                 case UNREGISTER_CLIENT:
                     Log.v(TAG, "Unregister Client");
                     BluetoothService.BOUND_COUNT--;
                     Log.v(TAG, "Bound Clients: " + BluetoothService.BOUND_COUNT);
-                    //sendMessageToClient(TestService.UNREGISTER_CLIENT);
                     break;
                 case MESSAGE_RESTART:
                     Log.v(TAG, "Restart Listening");
@@ -209,6 +216,8 @@ public class BluetoothService extends Service {
             }
         }
     }
+
+    //TODO Delete if new v works
     /**
      * Send Message To Client
      * Sends a message to a bound Client
@@ -216,7 +225,7 @@ public class BluetoothService extends Service {
      */
     private void sendMessageToClient(int messageType, Object message) {
         Message msg = new Message();
-
+/*
         switch (messageType) {
             case INT_MESSAGE:
                 int intMsg = (Integer) message;
@@ -232,6 +241,7 @@ public class BluetoothService extends Service {
                 msg.obj = message;
                 break;
         }
+*/
 
         try {
             mClientMessenger.send(msg);
@@ -240,6 +250,37 @@ public class BluetoothService extends Service {
         }
     }
 
+    /**
+     * Send message to client (1)
+     * Sending a msg that hasn't been received from Glass
+     * Connection state msgs for example
+     * @param connectionMsg Msg regarding connection
+     */
+    private void sendMessageToClient(int connectionMsg) {
+        Message msg = new Message();
+        msg.what = connectionMsg;
+
+        try {
+            mClientMessenger.send(msg);
+        } catch (RemoteException remE) {
+            Log.e(TAG, "Couldn't contact Client");
+        }
+    }
+    /**
+     * Send message to client (2)
+     * Send a message received from Glass! to client
+     * @param msgFromGlass message (as a byte array) received from glass
+     */
+    private void sendMessageToClient(byte[] msgFromGlass) {
+        Message msg = new Message();
+        msg.what = BluetoothService.GLASS_MESSAGE;
+        msg.obj = msgFromGlass;
+        try {
+            mClientMessenger.send(msg);
+        } catch (RemoteException remE) {
+            Log.e(TAG, "Couldn't contact client");
+        }
+    }
 
     /**
      * Methods to handle the Threads
@@ -382,17 +423,18 @@ public class BluetoothService extends Service {
     }
     /**
      * Send To Glass
-     * Gets a Command (int) and sends it to Glass
-     * @param command Command to send to Glass
+     * Send a generic (== byte array) message to glass
+     * @param msgForGlass Byte array we want to send to glass
      */
-    public void sendToGlass(int command) {
-        byte[] msgBytes;
+    public void sendToGlass(byte[] msgForGlass) {
+        write(msgForGlass);
 
+      /*  byte[] msgBytes;
         // convert int to byte array (just 3 bits needed 1 = 001 , 2 = 010)
         msgBytes = ByteBuffer.allocate(4).putInt(command).array();
         if(msgBytes == null) Log.v(TAG, "msgBytes NULL");
         write(msgBytes);
-        Log.v(TAG, "Message: " + command);
+        Log.v(TAG, "Message: " + command); */
     }
     /**
      * Write
@@ -404,7 +446,8 @@ public class BluetoothService extends Service {
         if(mConnectedThread != null) // if trying to write out when still listening
             mConnectedThread.write(out);
         else {
-            sendMessageToClient(INT_MESSAGE, BluetoothService.WAIT_FOR_CONNECTION);
+            sendMessageToClient(BluetoothService.WAIT_FOR_CONNECTION);
+            //sendMessageToClient(INT_MESSAGE, BluetoothService.WAIT_FOR_CONNECTION);
         }
     }
 
@@ -710,7 +753,19 @@ public class BluetoothService extends Service {
                 Log.v(TAG, "Loop Connected Thread");
                 try {
                     bytes = mmInStream.read(buffer);
+                    Log.v(TAG, "Message from Glass length: " + bytes);
+                    ByteBuffer wrapper = ByteBuffer.wrap(buffer);
+                    int check = wrapper.getInt();
+                    if(check == GLASS_STOPPED) {
+                        sendMessageToClient(GLASS_STOPPED);
+                        Log.v(TAG, "Glass Stopped Message received: " + check);
+                    } else {
+                        sendMessageToClient(buffer);
+                        Log.v(TAG, "Message from Glass received: " + check);
+                    }
 
+                    //TODO delete if new v works
+/*
                     // convert bytes to int
                     ByteBuffer wrapper = ByteBuffer.wrap(buffer);
                     int intMessage = wrapper.getInt();
@@ -724,6 +779,7 @@ public class BluetoothService extends Service {
 
                     // Send Message to bound Client
                     sendMessageToClient(INT_MESSAGE, intMessage);
+                    */
                 } catch (IOException e) {
                     Log.e(TAG, "Failed reading from Glass", e);
                     break;
@@ -742,7 +798,8 @@ public class BluetoothService extends Service {
             try {
                 mmOutStream.write(bytes);
                 // send message to Main Activity
-                sendMessageToClient(INT_MESSAGE, BluetoothService.MESSAGE_WRITE);
+                sendMessageToClient(BluetoothService.MESSAGE_WRITE);
+                // sendMessageToClient(INT_MESSAGE, BluetoothService.MESSAGE_WRITE);
             } catch (IOException ioE) {
                 Log.e(TAG, "Write Failed", ioE);
 
