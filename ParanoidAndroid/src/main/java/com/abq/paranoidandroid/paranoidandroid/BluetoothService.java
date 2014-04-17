@@ -749,7 +749,15 @@ public class BluetoothService extends Service {
                 try {
                     bytes = mmInStream.read(buffer);
                     Log.v(TAG, "Message from Glass length: " + bytes);
-                    sendMessageToClient(buffer);
+                    ByteBuffer wrapper = ByteBuffer.wrap(buffer);
+                    int check = wrapper.getInt();
+                    if(check == GLASS_STOPPED) {
+                        sendMessageToClient(GLASS_STOPPED);
+                        Log.v(TAG, "Glass Stopped Message received: " + check);
+                    } else {
+                        sendMessageToClient(buffer);
+                        Log.v(TAG, "Message from Glass received: " + check);
+                    }
 
                     //TODO delete if new v works
 /*
