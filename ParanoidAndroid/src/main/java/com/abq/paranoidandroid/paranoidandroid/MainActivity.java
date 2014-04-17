@@ -75,10 +75,12 @@ public class MainActivity extends Activity {
 
     private JSONObject mSettings;
     private static final String SP_SETTINGS = "settings";
-    private static final String SCROLL_SPEED_KEY = "SCROLL_SPEED";
-    private static final int SCROLL_SPEED_DEFAULT = 5;
-    private static final String NUM_CONTACTS_KEY = "NUM_CONTACTS";
-    private static final int NUM_CONTACTS_DEFAULT = 0;
+    public static final String SCROLL_SPEED_KEY = "SCROLL_SPEED";
+    public static final int SCROLL_SPEED_DEFAULT = 5;
+    public static final String NUM_CONTACTS_KEY = "NUM_CONTACTS";
+    public static final int NUM_CONTACTS_DEFAULT = 0;
+    public static final String NAME_KEY = "name";
+    public static final String NUMBER_KEY = "number";
 
     /**
      * Activity Lifecycle methods
@@ -155,28 +157,47 @@ public class MainActivity extends Activity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle item selection
+
+        Intent intent = new Intent();
+        int reqCode = 0;
+
         switch (item.getItemId()) {
             case R.id.addContact:
-                Intent intent = new Intent(MainActivity.this, NewContactActivity.class);
-                startActivityForResult(intent, 1);
-                return true;
+                intent.setClass(this, NewContactActivity.class);
+                reqCode = 1;
+                break;
             case R.id.changeScrollSpeed:
-                // ...
-                return true;
-            default:
-                return super.onOptionsItemSelected(item);
+                intent.setClass(this, UpdateScrollSpeedActivity.class);
+                reqCode = 2;
+                break;
         }
+
+        assert reqCode != 0;
+        startActivityForResult(intent, reqCode);
+        return true;
     }
 
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 
+        if (resultCode != RESULT_OK)
+            return;
+
         if (requestCode == 1) {
-            if(resultCode == RESULT_OK){
-                final String name = data.getStringExtra("name");
-                final String number = data.getStringExtra("number");
-                addContact(name, number);
+            final String name = data.getStringExtra(NAME_KEY);
+            final String number = data.getStringExtra(NUMBER_KEY);
+            assert name.length() > 0;
+            assert number.length() == 10;
+            addContact(name, number);
+        }
+        else if (requestCode == 2) {
+            final int scroll_speed = data.getIntExtra(SCROLL_SPEED_KEY, SCROLL_SPEED_DEFAULT);
+            assert scroll_speed >= 1 && scroll_speed <= 10;
+            try {
+                mSettings.put(SCROLL_SPEED_KEY, scroll_speed);
+            } catch (JSONException e) {
+                e.printStackTrace();
             }
+            getSharedPreferences(SP_SETTINGS, MODE_PRIVATE).edit().putInt(SCROLL_SPEED_KEY, scroll_speed).commit();
         }
     }
 
