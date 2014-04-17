@@ -62,6 +62,7 @@ public class BluetoothService extends Service {
     public static final int GLASS_STOPPED = 9; // (== THIS_STOPPED on Glass)
     public static final int GLASS_OK = 10;
     public static final int GLASS_BACK = 11;
+    public static final int GLASS_DATA = 14;
 
     // Special Messages
     public static final int INT_MESSAGE = 1;
@@ -200,6 +201,10 @@ public class BluetoothService extends Service {
                 case MESSAGE_RESTART:
                     Log.v(TAG, "Restart Listening");
                     restartListeningToIncomingRequests();
+                    break;
+                case GLASS_DATA:
+                    Log.v(TAG, "Data");
+                    write((byte[]) msg.obj);
                     break;
             }
         }

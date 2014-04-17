@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -18,6 +19,9 @@ import android.os.RemoteException;
 import android.os.Vibrator;
 import android.telephony.SmsManager;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
@@ -25,6 +29,9 @@ import android.widget.Toast;
 
 import com.android.future.usb.UsbAccessory;
 import com.android.future.usb.UsbManager;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
@@ -64,6 +71,13 @@ public class MainActivity extends Activity {
 
     private Vibrator mVibrator;
     private boolean isVibrating;
+
+    private JSONObject mSettings;
+    private static final String SP_SETTINGS = "settings";
+    private static final String SCROLL_SPEED_KEY = "SCROLL_SPEED";
+    private static final int SCROLL_SPEED_DEFAULT = 5;
+    private static final String NUM_CONTACTS_KEY = "NUM_CONTACTS";
+    private static final int NUM_CONTACTS_DEFAULT = 0;
 
     /**
      * Activity Lifecycle methods
@@ -108,7 +122,93 @@ public class MainActivity extends Activity {
 
         mVibrator = ((Vibrator) getSystemService(VIBRATOR_SERVICE));
         isVibrating = false;
+
+        // initialize in-memory settings object
+        SharedPreferences sp = getSharedPreferences(SP_SETTINGS, MODE_PRIVATE);
+        mSettings = new JSONObject();
+
+        try {
+            mSettings.put(SCROLL_SPEED_KEY, sp.getInt(SCROLL_SPEED_KEY, SCROLL_SPEED_DEFAULT));
+            mSettings.put(NUM_CONTACTS_KEY, sp.getInt(NUM_CONTACTS_KEY, NUM_CONTACTS_DEFAULT));
+
+            // iterate through all contacts in SP, add to in-memory settings object
+            final int num_contacts = mSettings.getInt(NUM_CONTACTS_KEY);
+            for (int i = 1; i <= num_contacts; i++) {
+                String name_key = "contact_" + i + "_name";
+                String number_key = "contact_" + i + "_number";
+                mSettings.put(name_key, sp.getString(name_key, ""));
+                mSettings.put(number_key, sp.getString(number_key, ""));
+            }
+
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
     }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle item selection
+        switch (item.getItemId()) {
+            case R.id.addContact:
+                Intent intent = new Intent(MainActivity.this, NewContactActivity.class);
+                startActivityForResult(intent, 1);
+                return true;
+            case R.id.changeScrollSpeed:
+                // ...
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+    }
+
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+
+        if (requestCode == 1) {
+            if(resultCode == RESULT_OK){
+                final String name = data.getStringExtra("name");
+                final String number = data.getStringExtra("number");
+                addContact(name, number);
+            }
+        }
+    }
+
+    public void addContact(final String name, final String number) {
+        final int contact_number = getSharedPreferences(SP_SETTINGS, MODE_PRIVATE).getInt(NUM_CONTACTS_KEY, NUM_CONTACTS_DEFAULT) + 1; // we're adding a contact
+        final String name_key = "contact_" + contact_number + "_name";
+        final String number_key = "contact_" + contact_number + "_number";
+
+        // insert contact into local storage, update number of contacts
+        SharedPreferences.Editor editor = getSharedPreferences(SP_SETTINGS, MODE_PRIVATE).edit();
+        editor.putString(name_key, name);
+        editor.putString(number_key, number);
+        editor.putInt(NUM_CONTACTS_KEY, contact_number);
+        editor.commit();
+
+        // add contact to in-memory settings object
+        try {
+            mSettings.put(name_key, name);
+            mSettings.put(number_key, number);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void updateScrollSpeed(final int scroll_speed) {
+        getSharedPreferences(SP_SETTINGS, MODE_PRIVATE).edit().putInt(SCROLL_SPEED_KEY, scroll_speed).commit();
+        try {
+            mSettings.put(SCROLL_SPEED_KEY, scroll_speed);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
     /**
      * On Start
      * Bind to Service
@@ -250,6 +350,21 @@ public class MainActivity extends Activity {
         Message msg = new Message();
         msg.what = message;
 
+
+        try {
+            Log.v(TAG, "Try contacting Service");
+            mBluetoothServiceMessenger.send(msg);
+        } catch (RemoteException remE) {
+            Log.e(TAG, "Couldn't contact Service", remE);
+        }
+    }
+
+    private void sendMessageToService(JSONObject jsonObject) {
+        Message msg = new Message();
+
+        msg.what = BluetoothService.GLASS_DATA;
+        msg.obj = jsonObject.toString().getBytes();
+
         try {
             Log.v(TAG, "Try contacting Service");
             mBluetoothServiceMessenger.send(msg);
@@ -295,6 +410,10 @@ public class MainActivity extends Activity {
                         case BluetoothService.STATE_CONNECTED:
                             Toast.makeText(getApplicationContext(),
                                     "Connected", Toast.LENGTH_SHORT).show();
+
+                            // send settings to glass
+                            sendMessageToService(mSettings);
+
                             break;
                         case BluetoothService.STATE_CONNECTING:
                             Toast.makeText(getApplicationContext(),

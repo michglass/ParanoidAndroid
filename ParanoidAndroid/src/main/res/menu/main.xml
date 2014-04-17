@@ -2,4 +2,13 @@
     xmlns:tools="http://schemas.android.com/tools"
     tools:context="com.abq.paranoidandroid.paranoidandroid.MainActivity" >
 
+    <item
+        android:id="@+id/addContact"
+        android:title="Add Contact"
+        android:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/changeScrollSpeed"
+        android:title="Change Scroll Speed" />
+
 </menu>
