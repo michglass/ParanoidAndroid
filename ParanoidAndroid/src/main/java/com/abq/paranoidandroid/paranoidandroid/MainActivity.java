@@ -321,21 +321,7 @@ public class MainActivity extends Activity {
                 Log.v(TAG, "Send OK to Service");
                 byte[] okCommand = ByteBuffer.allocate(4).putInt(BluetoothService.GLASS_OK).array();
                 sendToGlass(okCommand);
-                JSONObject test = new JSONObject();
-                try {
-                    test.put("Hello from Android", "nothin");
-                } catch (JSONException jE) {
-                    Log.e(TAG, "Couldnt buld json", jE);
-                }
-                sendToGlass(test);
-                //sendMessageToService(BluetoothService.GLASS_OK);
                 break;
-            /*
-            case R.id.sendBackButton:
-                Log.v(TAG, "Send Back to Service");
-                sendMessageToService(BluetoothService.GLASS_BACK);
-                break;
-                */
         }
     }
 
@@ -516,14 +502,6 @@ public class MainActivity extends Activity {
                     Log.v(TAG, "Glass Msg: " + (String)msg.obj);
                     //TODO Rodney: do sth with json string
                     break;
-                /*case BluetoothService.STRING_MESSAGE:
-
-
-
-                    break;
-                case BluetoothService.BITMAP_MESSAGE:
-                    Log.v(TAG, "Bitmap Message");
-                    break; */
             }
         }
     }

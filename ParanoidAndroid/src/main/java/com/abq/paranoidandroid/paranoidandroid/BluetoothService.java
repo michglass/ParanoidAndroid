@@ -35,7 +35,6 @@ public class BluetoothService extends Service {
     // Bluetooth Vars
     private final BluetoothAdapter mbtAdapter = BluetoothAdapter.getDefaultAdapter();
     private BluetoothDevice mbtDevice;
-    private static final String DEVICE_NAME = "Tim Wood's Glass"; // Name of Glass
     private int mCurrState; // current state of the connection
 
     // Threads to initiate and handle connection
@@ -63,15 +62,6 @@ public class BluetoothService extends Service {
     public static final int GLASS_DATA = 14; // Indicating to send a message to glass via bt
     public static final int GLASS_MESSAGE = 11; // indicating that we have received a msg from glass
     public static final int GLASS_OK = 10;
-/*
-    //TODO Delete if new v works
-    public static final int GLASS_BACK = 11;
-    public static final int GLASS_DATA = 14;
-
-    // Special Messages
-    public static final int INT_MESSAGE = 1;
-    public static final int STRING_MESSAGE = 2;
-    public static final int BITMAP_MESSAGE = 3; */
 
     // Service Variables
     // Messenger that gets puplished to client
@@ -155,7 +145,7 @@ public class BluetoothService extends Service {
     public void onDestroy() {
         Log.v(TAG, "Destroy Service");
 
-        //TODO maybe just send a byte instead of a byte array
+        // notify glass that android has stopped
         byte[] stopMsg = ByteBuffer.allocate(4).putInt(THIS_STOPPED).array();
         sendToGlass(stopMsg);
 
@@ -177,13 +167,6 @@ public class BluetoothService extends Service {
 
             switch (msg.what) {
 
-                //TODO Delete if new v works
-                /*case GLASS_OK:
-                    Log.v(TAG, "Glass OK: " + GLASS_OK);
-
-                    // send OK command to Glass
-                    sendToGlass(GLASS_OK);
-                    break; */
                 case GLASS_DATA:
                     byte[] glassmsg;
                     if(msg.obj != null) {
@@ -214,40 +197,6 @@ public class BluetoothService extends Service {
             }
         }
     }
-
-    //TODO Delete if new v works
-    /**
-     * Send Message To Client
-     * Sends a message to a bound Client
-     * @param message Message for the Client
-     */
-    private void sendMessageToClient(int messageType, Object message) {
-        Message msg = new Message();
-/*
-        switch (messageType) {
-            case INT_MESSAGE:
-                int intMsg = (Integer) message;
-                msg.what = intMsg;
-                break;
-            case STRING_MESSAGE:
-                msg.what = STRING_MESSAGE;
-                msg.obj =  message;
-
-                break;
-            case BITMAP_MESSAGE:
-                msg.what = BITMAP_MESSAGE;
-                msg.obj = message;
-                break;
-        }
-*/
-
-        try {
-            mClientMessenger.send(msg);
-        } catch (RemoteException remE) {
-            Log.e(TAG, "Couldn't contact Client");
-        }
-    }
-
     /**
      * Send message to client (1)
      * Sending a msg that hasn't been received from Glass
@@ -474,21 +423,21 @@ public class BluetoothService extends Service {
         Set<BluetoothDevice> pairedDevices = mbtAdapter.getBondedDevices();
         Log.v(TAG, mbtAdapter.getName());
         try {
-            // start looking only if there's at least one device
-            if(pairedDevices.size() > 0) {
-                // find specific Device (Glass)
-                for(BluetoothDevice btDevice : pairedDevices) {
-                    // if device is found save it in member var
-                    if(pairedDevices.size() > 1) {
-                        Log.e(TAG, "Paired to more than One Device");
-                    } else {
-                        mbtDevice = btDevice;
-                        Log.v(TAG, "Device Name: " + mbtDevice.getName());
+            if(pairedDevices != null) {
+                // start looking only if there's at least one device
+                if(pairedDevices.size() > 0) {
+                    // find specific Device (Glass)
+                    for (BluetoothDevice btDevice : pairedDevices) {
+                        // if device is found save it in member var
+                        if (pairedDevices.size() > 1) {
+                            Log.e(TAG, "Paired to more than One Device");
+                        } else {
+                            mbtDevice = btDevice;
+                            Log.v(TAG, "Device Name: " + mbtDevice.getName());
+                        }
                     }
-                }
-            } else {
-                Log.v(TAG, "No devices found");
-            }
+                } else { Log.e(TAG, "Paired Devices > 0"); }
+            } else { Log.e(TAG, "Paired Devices == NULL"); }
         } catch (Exception e) {
             Log.v(TAG, "No devices found");
         }
@@ -761,22 +710,6 @@ public class BluetoothService extends Service {
                         sendMessageToClient(msg);
                     }
 
-                    //TODO delete if new v works
-/*
-                    // convert bytes to int
-                    ByteBuffer wrapper = ByteBuffer.wrap(buffer);
-                    int intMessage = wrapper.getInt();
-
-                    if (intMessage > 100) { // meaning message is actually a string
-                        String s = new String(buffer, 0, bytes);
-                        Log.v(TAG, "String Message: " + s);
-                        sendMessageToClient(STRING_MESSAGE, s);
-                    }
-                    Log.v(TAG, "Int Message: " + intMessage);
-
-                    // Send Message to bound Client
-                    sendMessageToClient(INT_MESSAGE, intMessage);
-                    */
                 } catch (IOException e) {
                     Log.e(TAG, "Failed reading from Glass", e);
                     break;
