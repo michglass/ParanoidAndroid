@@ -321,6 +321,13 @@ public class MainActivity extends Activity {
                 Log.v(TAG, "Send OK to Service");
                 byte[] okCommand = ByteBuffer.allocate(4).putInt(BluetoothService.GLASS_OK).array();
                 sendToGlass(okCommand);
+                JSONObject test = new JSONObject();
+                try {
+                    test.put("Hello from Android", "nothin");
+                } catch (JSONException jE) {
+                    Log.e(TAG, "Couldnt buld json", jE);
+                }
+                sendToGlass(test);
                 //sendMessageToService(BluetoothService.GLASS_OK);
                 break;
             /*
@@ -385,12 +392,22 @@ public class MainActivity extends Activity {
         }
     };
     /**
-     * Send To Glass
+     * Send To Glass (1)
      * Send a message(byte array) to glass
      * @param msgForGlass msg that you want to send to glass
      */
     private void sendToGlass(byte[] msgForGlass) {
         sendMessageToService(BluetoothService.GLASS_DATA, msgForGlass);
+    }
+    /**
+     * Send To Glass (2)
+     * Send a JSON Object to glass
+     * @param json Json Message we want to send to glass
+     */
+    private void sendToGlass(JSONObject json) {
+        byte[] glassmsg = json.toString().getBytes();
+
+        sendToGlass(glassmsg);
     }
     /**
      * Send Message To Service (1)
@@ -401,20 +418,6 @@ public class MainActivity extends Activity {
         Message msg = new Message();
         msg.what = message;
 
-
-        try {
-            Log.v(TAG, "Try contacting Service");
-            mBluetoothServiceMessenger.send(msg);
-        } catch (RemoteException remE) {
-            Log.e(TAG, "Couldn't contact Service", remE);
-        }
-    }
-
-    private void sendMessageToService(JSONObject jsonObject) {
-        Message msg = new Message();
-
-        msg.what = BluetoothService.GLASS_DATA;
-        msg.obj = jsonObject.toString().getBytes();
 
         try {
             Log.v(TAG, "Try contacting Service");
@@ -479,8 +482,8 @@ public class MainActivity extends Activity {
                             Toast.makeText(getApplicationContext(),
                                     "Connected", Toast.LENGTH_SHORT).show();
 
-                            // send settings to glass
-                            sendMessageToService(mSettings);
+                            //TODO send settings to glass
+                            // sendToGlass(mSettings);
 
                             break;
                         case BluetoothService.STATE_CONNECTING:
@@ -510,8 +513,9 @@ public class MainActivity extends Activity {
                     sendMessageToService(BluetoothService.MESSAGE_RESTART);
                     break;
                 case BluetoothService.GLASS_MESSAGE:
-                    //TODO Do sth with message from Glass
-                    byte[] glassMsg = (byte[]) msg.obj;
+                    Log.v(TAG, "Glass Msg: " + (String)msg.obj);
+                    //TODO Rodney: do sth with json string
+                    break;
                 /*case BluetoothService.STRING_MESSAGE:
 
 
@@ -604,7 +608,8 @@ public class MainActivity extends Activity {
                         if(buffer[1] == TARGET_BUTTON) {
                             if(buffer[2] == VALUE_PRESSED) {
                                 Log.v(TAG, "Button Pressed");
-                                sendMessageToService(BluetoothService.GLASS_OK);
+                                byte[] glassmsg = ByteBuffer.allocate(4).putInt(BluetoothService.GLASS_OK).array();
+                                sendToGlass(glassmsg);
                                 startVibrate();
                             } else if(buffer[2] == VALUE_NOTPRESSED) {
                                 Log.v(TAG, "Button not Pressed");

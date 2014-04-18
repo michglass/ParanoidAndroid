@@ -192,6 +192,7 @@ public class BluetoothService extends Service {
                     }
                     else
                         Log.e(TAG, "MSG for Glass NULL");
+                    break;
                 case REGISTER_CLIENT:
                     Log.v(TAG, "Register Client");
                     BluetoothService.BOUND_COUNT++;
@@ -199,6 +200,7 @@ public class BluetoothService extends Service {
 
                     // register Client to be able to send Messages back
                     mClientMessenger = msg.replyTo;
+                    Log.v(TAG, "Client Messenger NULL?: " + (mClientMessenger == null));
                     break;
                 case UNREGISTER_CLIENT:
                     Log.v(TAG, "Unregister Client");
@@ -208,10 +210,6 @@ public class BluetoothService extends Service {
                 case MESSAGE_RESTART:
                     Log.v(TAG, "Restart Listening");
                     restartListeningToIncomingRequests();
-                    break;
-                case GLASS_DATA:
-                    Log.v(TAG, "Data");
-                    write((byte[]) msg.obj);
                     break;
             }
         }
@@ -269,9 +267,9 @@ public class BluetoothService extends Service {
     /**
      * Send message to client (2)
      * Send a message received from Glass! to client
-     * @param msgFromGlass message (as a byte array) received from glass
+     * @param msgFromGlass message (as a String) received from glass
      */
-    private void sendMessageToClient(byte[] msgFromGlass) {
+    private void sendMessageToClient(String msgFromGlass) {
         Message msg = new Message();
         msg.what = BluetoothService.GLASS_MESSAGE;
         msg.obj = msgFromGlass;
@@ -481,12 +479,11 @@ public class BluetoothService extends Service {
                 // find specific Device (Glass)
                 for(BluetoothDevice btDevice : pairedDevices) {
                     // if device is found save it in member var
-                    if(btDevice.getName().equals(DEVICE_NAME)) {
-                        mbtDevice = btDevice;
-                        Log.v(TAG, "Device Name: "+ mbtDevice.getName());
+                    if(pairedDevices.size() > 1) {
+                        Log.e(TAG, "Paired to more than One Device");
                     } else {
-                        Log.v(TAG, "glass not found");
-                        Log.v(TAG, btDevice.getName());
+                        mbtDevice = btDevice;
+                        Log.v(TAG, "Device Name: " + mbtDevice.getName());
                     }
                 }
             } else {
@@ -760,8 +757,8 @@ public class BluetoothService extends Service {
                         sendMessageToClient(GLASS_STOPPED);
                         Log.v(TAG, "Glass Stopped Message received: " + check);
                     } else {
-                        sendMessageToClient(buffer);
-                        Log.v(TAG, "Message from Glass received: " + check);
+                        String msg = new String(buffer,0,bytes);
+                        sendMessageToClient(msg);
                     }
 
                     //TODO delete if new v works
