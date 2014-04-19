@@ -1,10 +1,12 @@
 package com.abq.paranoidandroid.paranoidandroid;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
@@ -19,9 +21,6 @@ import android.os.RemoteException;
 import android.os.Vibrator;
 import android.telephony.SmsManager;
 import android.util.Log;
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
@@ -95,7 +94,7 @@ public class MainActivity extends Activity {
      * @param savedInstanceState Saved Instance State
      */
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(final Bundle savedInstanceState) {
         Log.v(TAG, "On Create");
         super.onCreate(savedInstanceState);
 
@@ -146,35 +145,45 @@ public class MainActivity extends Activity {
         } catch (JSONException e) {
             e.printStackTrace();
         }
-    }
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        MenuInflater inflater = getMenuInflater();
-        inflater.inflate(R.menu.main, menu);
-        return true;
-    }
+        findViewById(R.id.btnSettings).setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
 
-        Intent intent = new Intent();
-        int reqCode = 0;
+                builder.setTitle("Choose a settings option")
+                        .setItems(R.array.settings, new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int which) {
+                                Intent intent = new Intent();
+                                int reqCode = 0;
 
-        switch (item.getItemId()) {
-            case R.id.addContact:
-                intent.setClass(this, NewContactActivity.class);
-                reqCode = 1;
-                break;
-            case R.id.changeScrollSpeed:
-                intent.setClass(this, UpdateScrollSpeedActivity.class);
-                reqCode = 2;
-                break;
-        }
+                                switch (which) {
+                                    case 0:
+                                        // change scroll speed
+                                        intent.setClass(MainActivity.this, UpdateScrollSpeedActivity.class);
+                                        reqCode = 1;
+                                        break;
+                                    case 1:
+                                        // add a contact
+                                        intent.setClass(MainActivity.this, NewContactActivity.class);
+                                        reqCode = 2;
+                                        break;
+                                    case 2:
+                                        // cancel
+                                        return;
+                                }
 
-        assert reqCode != 0;
-        startActivityForResult(intent, reqCode);
-        return true;
+                                assert reqCode != 0;
+                                startActivityForResult(intent, reqCode);
+                            }
+                        });
+
+                builder.create().show();
+
+                return false;
+            }
+        });
     }
 
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -192,13 +201,10 @@ public class MainActivity extends Activity {
         else if (requestCode == 2) {
             final int scroll_speed = data.getIntExtra(SCROLL_SPEED_KEY, SCROLL_SPEED_DEFAULT);
             assert scroll_speed >= 1 && scroll_speed <= 10;
-            try {
-                mSettings.put(SCROLL_SPEED_KEY, scroll_speed);
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
-            getSharedPreferences(SP_SETTINGS, MODE_PRIVATE).edit().putInt(SCROLL_SPEED_KEY, scroll_speed).commit();
+            updateScrollSpeed(scroll_speed);
         }
+
+        sendToGlass(mSettings);
     }
 
     public void addContact(final String name, final String number) {
@@ -469,7 +475,7 @@ public class MainActivity extends Activity {
                                     "Connected", Toast.LENGTH_SHORT).show();
 
                             //TODO send settings to glass
-                            // sendToGlass(mSettings);
+                            sendToGlass(mSettings);
 
                             break;
                         case BluetoothService.STATE_CONNECTING:

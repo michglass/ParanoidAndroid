@@ -10,4 +10,10 @@
     <string name="action_settings">Settings</string>
     <string name="title_activity_update_scroll_speed">UpdateScrollSpeedActivity</string>
 
+    <string-array name="settings">
+        <item>Change Scroll Speed</item>
+        <item>Add a Contact</item>
+        <item>Cancel</item>
+    </string-array>
+
 </resources>

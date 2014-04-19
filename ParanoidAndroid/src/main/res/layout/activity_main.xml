@@ -14,4 +14,10 @@
         android:layout_gravity="center_horizontal"
         android:onClick="OnButtonClick" />
 
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="S"
+        android:id="@+id/btnSettings" />
+
 </LinearLayout>
