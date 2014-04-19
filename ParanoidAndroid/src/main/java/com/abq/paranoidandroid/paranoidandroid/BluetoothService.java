@@ -225,7 +225,7 @@ public class BluetoothService extends Service {
         try {
             mClientMessenger.send(msg);
         } catch (RemoteException remE) {
-            Log.e(TAG, "Couldn't contact client");
+            Log.e(TAG, "Client Messenger NULL");
         }
     }
 
