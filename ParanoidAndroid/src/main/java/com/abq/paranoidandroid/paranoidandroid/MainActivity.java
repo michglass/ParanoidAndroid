@@ -129,7 +129,9 @@ public class MainActivity extends Activity {
         // initialize in-memory settings object
         SharedPreferences sp = getSharedPreferences(SP_SETTINGS, MODE_PRIVATE);
         mSettings = new JSONObject();
-
+        if(haveBackend){
+            
+        }
         try {
             mSettings.put(SCROLL_SPEED_KEY, sp.getInt(SCROLL_SPEED_KEY, SCROLL_SPEED_DEFAULT));
             mSettings.put(NUM_CONTACTS_KEY, sp.getInt(NUM_CONTACTS_KEY, NUM_CONTACTS_DEFAULT));
