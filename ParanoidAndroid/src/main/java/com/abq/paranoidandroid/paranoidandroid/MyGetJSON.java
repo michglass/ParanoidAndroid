@@ -28,11 +28,13 @@ private class MyGETJSON extends AsyncTask<String, Void, String> {
     String settingString;
     mSettings = new JSONObject();
 
-    private void handleContacts(String input) {
+    private JSONArray handleContacts(String input) {
         try {
             System.out.println("handleContacts ="+input);
             JSONArray json = new JSONArray(input);
+            /*
             System.out.println("array="+json);
+
             contactString = "Contacts:"+EOL;
             for(int i = 0 ; i < json.length(); i++){
                 String name = "contact_" + json.getJSONObject(i).getString("contactName") + "_name";
@@ -42,6 +44,7 @@ private class MyGETJSON extends AsyncTask<String, Void, String> {
                 contactString = contactString + "Contact Name: " + name + EOL + "Contact Number " + number + EOL + "Contact Email: "+ email + EOL;
                 System.out.println(contactString);
             }
+            */
         } catch (Exception e) {
             System.out.println("Exception "+e.getMessage());
         }
@@ -66,8 +69,9 @@ private class MyGETJSON extends AsyncTask<String, Void, String> {
 
 
     @Override
-    protected String doInBackground(String... params) {
+    protected JSONArray doInBackground(String... params) {
         String script = null;
+        contactArray = new JSONArray;
         for(String whatever : params){
             System.out.println("P="+whatever);
             script = whatever;
@@ -99,7 +103,9 @@ private class MyGETJSON extends AsyncTask<String, Void, String> {
                 String responseString = out.toString();
                 System.out.println("Response\n");
                 System.out.println(responseString);
-                if ( script.startsWith("contacts")) handlePlay(responseString);
+                if ( script.startsWith("contacts"))
+                    contactArray = handleContacts(responseString);
+                    return contactArray;
                 if ( script.startsWith("messages")) handleMessages(responseString);
                 //if ( script.startsWith("settings")) handleSettings(responseString);
             } else {
@@ -110,7 +116,7 @@ private class MyGETJSON extends AsyncTask<String, Void, String> {
         } catch (Exception e) {
             System.out.println("Exception "+e.getMessage());
         }
-        return null;
+        //return null;
     }
 }
 

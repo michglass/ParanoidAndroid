@@ -29,6 +29,7 @@ import android.widget.Toast;
 import com.android.future.usb.UsbAccessory;
 import com.android.future.usb.UsbManager;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -72,6 +73,8 @@ public class MainActivity extends Activity {
 
     private Vibrator mVibrator;
     private boolean isVibrating;
+
+    boolean haveBackend = false;
 
     private JSONObject mSettings;
     private static final String SP_SETTINGS = "settings";
@@ -129,9 +132,19 @@ public class MainActivity extends Activity {
         // initialize in-memory settings object
         SharedPreferences sp = getSharedPreferences(SP_SETTINGS, MODE_PRIVATE);
         mSettings = new JSONObject();
+        /*
         if(haveBackend){
-            
+            JSONArray webContacts = new JSONArray();
+            contactToSend = new JSONObject();
+            webContacts = new MyGETJSON().execute("contacts");
+            for(int i = 0; i < webContacts.length();i++){
+                contactToSend = webContacts.getJSONObject(i);
+                Log.v(TAG, contactToSen.toString());
+                sendToGlass(contactToSend);
+            }
+            //new MyGETJSON().execute("contacts");
         }
+        */
         try {
             mSettings.put(SCROLL_SPEED_KEY, sp.getInt(SCROLL_SPEED_KEY, SCROLL_SPEED_DEFAULT));
             mSettings.put(NUM_CONTACTS_KEY, sp.getInt(NUM_CONTACTS_KEY, NUM_CONTACTS_DEFAULT));
