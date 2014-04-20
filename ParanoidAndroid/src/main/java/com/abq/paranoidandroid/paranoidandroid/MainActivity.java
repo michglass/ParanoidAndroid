@@ -81,7 +81,7 @@ public class MainActivity extends Activity {
     public static final int NUM_CONTACTS_DEFAULT = 0;
     public static final String NAME_KEY = "name";
     public static final String NUMBER_KEY = "number";
-
+    public final Context MainContext = this;
     /**
      * Activity Lifecycle methods
      * On Create: Start Service
@@ -335,20 +335,20 @@ public class MainActivity extends Activity {
     /**
      * Send SMS
      * Parses a string from glass and sends it as an SMS
-     * @param parsedMsg string that is parsed as phone number + message
      */
-    private void sendSMS(String parsedMsg) {
-        Log.v(TAG, parsedMsg);
-        ArrayList<String> stringList = new ArrayList<String>(Arrays.asList(parsedMsg.split(";")));
-        if(stringList.size() == 3){
-            Log.v(TAG, "Message prefix: " + stringList.get(0));
-            if(stringList.get(0).equals("comm")){
-                Log.v(TAG, "Sending SMS...");
-                SmsManager smsManager = SmsManager.getDefault();
-                smsManager.sendTextMessage(stringList.get(1), null, stringList.get(2), null, null);
-                Log.v(TAG, "SMS sending complete with message: " + stringList.get(1) + " " + stringList.get(2));
-            }
+    private void sendSMS(JSONObject object) {
+        Log.v(TAG, object.toString());
+        Log.v(TAG, "Sending SMS...");
+        try{
+            SmsManager smsManager = SmsManager.getDefault();
+            smsManager.sendTextMessage(object.getString("number"), null, object.getString("name"), null, null);
+            Log.v(TAG, "SMS sending complete with message: " + object.getString("name") + " " + object.getString("number"));
         }
+        catch(JSONException j){
+            Log.e(TAG, j.toString());
+        }
+
+
     }
 
     /**
@@ -506,6 +506,22 @@ public class MainActivity extends Activity {
                     sendMessageToService(BluetoothService.MESSAGE_RESTART);
                     break;
                 case BluetoothService.GLASS_MESSAGE:
+                    try {
+                        JSONObject message = new JSONObject((String) msg.obj);
+                        Log.v(TAG, message.getString("type"));
+                        if(message.getString("type").equals("email")){
+                            Email e = new Email(message.getString("emailAddress"),
+                                    "Sent From google glass!",message.getString("message"), MainContext);
+                            Log.v(TAG, "THIS HAPPENS!!!!!!!");
+                            e.sendEmail();
+                        }
+                        else if(message.getString("type").equals("text")){
+                            sendSMS(message);
+                        }
+                    }
+                    catch(JSONException j){
+                        Log.e(TAG, j.toString());
+                    }
                     Log.v(TAG, "Glass Msg: " + (String)msg.obj);
                     //TODO Rodney: do sth with json string
                     break;

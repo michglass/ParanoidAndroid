@@ -1,6 +1,8 @@
 package com.abq.paranoidandroid.paranoidandroid;
 
 
+import android.content.Context;
+import android.util.Log;
 import android.widget.Button;
 
 import android.app.ProgressDialog;
@@ -19,21 +21,23 @@ import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
 
 public class Email {
-    String TAG = "Main Activity";
+    String TAG = "Email Activity";
     Button btnSendSMS;
     private static final String username = "mglass481@gmail.com";
     private static final String password = "eecs4812014";
-    private String email;
+    private String emailAddress;
     private String subject;
     private String message;
+    private Context mContext;
 
-    public Email(String email, String subject, String message) {
-        this.email = email;
+    public Email(String emailAddress, String subject, String message, Context mContext) {
+        this.emailAddress = emailAddress;
         this.subject = subject;
         this.message = message;
+        this.mContext = mContext;
     }
     public void sendEmail(){
-        sendMail(email, subject, message);
+        sendMail(emailAddress, subject, message);
     }
 
     /** Called when the activity is first created. */
@@ -66,7 +70,7 @@ public class Email {
     */
     private void sendMail(String email, String subject, String messageBody) {
         Session session = createSessionObject();
-
+        Log.v(TAG, "THIS HAPPENS!");
         try {
             Message message = createMessage(email, subject, messageBody, session);
             new SendMailTask().execute(message);
@@ -110,7 +114,7 @@ public class Email {
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
-            progressDialog = ProgressDialog.show(null, "Please wait", "Sending mail", true, false);
+            progressDialog = ProgressDialog.show(mContext, "Please wait", "Sending mail", true, false);
         }
 
         @Override
