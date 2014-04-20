@@ -19,7 +19,7 @@ public class NewContactActivity extends Activity implements View.OnClickListener
         setContentView(R.layout.activity_new_contact);
 
         etName = (EditText) findViewById(R.id.etName);
-        etNumber = (EditText) findViewById(R.id.etName);
+        etNumber = (EditText) findViewById(R.id.etNumber);
 
         findViewById(R.id.btnSave).setOnClickListener(this);
         findViewById(R.id.btnCancel).setOnClickListener(this);

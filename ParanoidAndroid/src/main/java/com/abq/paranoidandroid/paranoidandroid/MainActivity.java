@@ -75,7 +75,7 @@ public class MainActivity extends Activity {
     private JSONObject mSettings;
     private static final String SP_SETTINGS = "settings";
     public static final String SCROLL_SPEED_KEY = "SCROLL_SPEED";
-    public static final int SCROLL_SPEED_DEFAULT = 5;
+    public static final int SCROLL_SPEED_DEFAULT = 3;
     public static final String NUM_CONTACTS_KEY = "NUM_CONTACTS";
     public static final int NUM_CONTACTS_DEFAULT = 0;
     public static final String NAME_KEY = "name";
@@ -131,6 +131,7 @@ public class MainActivity extends Activity {
 
         try {
             mSettings.put(SCROLL_SPEED_KEY, sp.getInt(SCROLL_SPEED_KEY, SCROLL_SPEED_DEFAULT));
+            getSharedPreferences(SP_SETTINGS, MODE_PRIVATE).edit().putInt(NUM_CONTACTS_KEY, NUM_CONTACTS_DEFAULT).commit();
             mSettings.put(NUM_CONTACTS_KEY, sp.getInt(NUM_CONTACTS_KEY, NUM_CONTACTS_DEFAULT));
 
             // iterate through all contacts in SP, add to in-memory settings object
@@ -187,23 +188,25 @@ public class MainActivity extends Activity {
     }
 
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        Log.e("SETTINGS", "onActivityResult, reqCode = " + requestCode + ", resultCode = " + resultCode);
 
         if (resultCode != RESULT_OK)
             return;
 
         if (requestCode == 1) {
+            final int scroll_speed = data.getIntExtra(SCROLL_SPEED_KEY, SCROLL_SPEED_DEFAULT);
+            assert scroll_speed >= 1 && scroll_speed <= 10;
+            updateScrollSpeed(scroll_speed);
+        }
+        else if (requestCode == 2) {
             final String name = data.getStringExtra(NAME_KEY);
             final String number = data.getStringExtra(NUMBER_KEY);
             assert name.length() > 0;
             assert number.length() == 10;
             addContact(name, number);
         }
-        else if (requestCode == 2) {
-            final int scroll_speed = data.getIntExtra(SCROLL_SPEED_KEY, SCROLL_SPEED_DEFAULT);
-            assert scroll_speed >= 1 && scroll_speed <= 10;
-            updateScrollSpeed(scroll_speed);
-        }
 
+        Log.e("DATA", mSettings.toString());
         sendToGlass(mSettings);
     }
 
@@ -211,6 +214,10 @@ public class MainActivity extends Activity {
         final int contact_number = getSharedPreferences(SP_SETTINGS, MODE_PRIVATE).getInt(NUM_CONTACTS_KEY, NUM_CONTACTS_DEFAULT) + 1; // we're adding a contact
         final String name_key = "contact_" + contact_number + "_name";
         final String number_key = "contact_" + contact_number + "_number";
+
+        // error on callers part
+        if (name == null || number == null || name.equals("") || number.equals(""))
+            return;
 
         // insert contact into local storage, update number of contacts
         SharedPreferences.Editor editor = getSharedPreferences(SP_SETTINGS, MODE_PRIVATE).edit();
@@ -231,6 +238,7 @@ public class MainActivity extends Activity {
     public void updateScrollSpeed(final int scroll_speed) {
         getSharedPreferences(SP_SETTINGS, MODE_PRIVATE).edit().putInt(SCROLL_SPEED_KEY, scroll_speed).commit();
         try {
+            Log.e("SETTINGS", "changing scroll speed to " + scroll_speed);
             mSettings.put(SCROLL_SPEED_KEY, scroll_speed);
         } catch (JSONException e) {
             e.printStackTrace();
