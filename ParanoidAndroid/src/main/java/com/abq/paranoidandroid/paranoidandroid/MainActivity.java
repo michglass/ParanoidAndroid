@@ -367,7 +367,7 @@ public class MainActivity extends Activity {
         try{
             SmsManager smsManager = SmsManager.getDefault();
             smsManager.sendTextMessage(object.getString("number"), null, object.getString("name"), null, null);
-            Log.v(TAG, "SMS sending complete with message: " + object.getString("name") + " " + object.getString("number"));
+            Log.v(TAG, "SMS sending complete with message: " + object.getString("message") + " " + object.getString("number"));
         }
         catch(JSONException j){
             Log.e(TAG, j.toString());
