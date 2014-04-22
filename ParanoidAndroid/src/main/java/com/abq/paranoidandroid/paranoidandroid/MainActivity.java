@@ -91,6 +91,7 @@ public class MainActivity extends Activity {
     public static final int SCROLL_SPEED_DEFAULT = 3;
     public static final String NUM_CONTACTS_KEY = "NUM_CONTACTS";
     public static final int NUM_CONTACTS_DEFAULT = 0;
+    public static final String NUM_MESSAGES_KEY = "NUM_MESSAGES";
     public static final String NAME_KEY = "name";
     public static final String NUMBER_KEY = "number";
     public final Context MainContext = this;
@@ -699,10 +700,8 @@ public class MainActivity extends Activity {
                 URI contactWebsite = new URI(contactURL);
                 URI messageWebsite = new URI(messageURL);
                 HttpGet getContacts = new HttpGet();
-
                 getContacts.setURI(contactWebsite);
                 HttpResponse contactResponse = httpclient.execute(getContacts);
-
                 StatusLine contactStatusLine = contactResponse.getStatusLine();
                 System.out.println("SL="+contactStatusLine);
                 if(contactStatusLine.getStatusCode() == HttpStatus.SC_OK){
@@ -713,14 +712,11 @@ public class MainActivity extends Activity {
                     System.out.println("Response\n");
                     System.out.println(responseString);
                     settingArray[0] = responseString;
-                    //if ( script.startsWith("messages")) handleMessages(responseString);
-                    //if ( script.startsWith("settings")) handleSettings(responseString);
                 } else {
                     //Closes the connection.
                     contactResponse.getEntity().getContent().close();
                     throw new IOException(contactStatusLine.getReasonPhrase());
                 }
-
                 HttpGet getMessages = new HttpGet();
                 getMessages.setURI(messageWebsite);
                 HttpResponse messageResponse = httpclient.execute(getMessages);
@@ -777,16 +773,21 @@ public class MainActivity extends Activity {
                     String name_key = "contact_" + i + "_name";
                     String number_key = "contact_" + i + "_number";
                     String email_key = "contact_" + i + "_email";
-                    webSettings.put(name_key, jsonContacts.getJSONObject(i--).getString("contactName"));
-                    webSettings.put(number_key, jsonContacts.getJSONObject(i--).getString("contactNumber"));
-                    webSettings.put(email_key, jsonContacts.getJSONObject(i--).getString("email"));
+                    webSettings.put(name_key, jsonContacts.getJSONObject(--i).getString("contactName"));
+                    webSettings.put(number_key, jsonContacts.getJSONObject(--i).getString("contactNumber"));
+                    webSettings.put(email_key, jsonContacts.getJSONObject(--i).getString("email"));
                 }
             } catch (JSONException e) {
                 e.printStackTrace();
             }
 
             try{
-                
+                webSettings.put(NUM_MESSAGES_KEY, jsonMessages.length());
+                num_messages = webSettings.getInt(NUM_MESSAGES_KEY);
+                for(int i = 1; i <= num_messages; i++){
+                    String message_key = "message_"+ i;
+                    webSettings.put(message_key, jsonMessages.getJSONObject(--i).getString("message"));
+                }
             } catch(JSONException e){
                 e.printStackTrace();
             }
