@@ -83,17 +83,27 @@ public class MainActivity extends Activity {
     private Vibrator mVibrator;
     private boolean isVibrating;
 
-    boolean haveBackend = true;
+    private final boolean mGetSettingsFromBackend = true;
 
     private JSONObject mSettings;
     private static final String SP_SETTINGS = "settings";
-    public static final String SCROLL_SPEED_KEY = "SCROLL_SPEED";
-    public static final int SCROLL_SPEED_DEFAULT = 3;
-    public static final String NUM_CONTACTS_KEY = "NUM_CONTACTS";
-    public static final int NUM_CONTACTS_DEFAULT = 0;
     public static final String NAME_KEY = "name";
     public static final String NUMBER_KEY = "number";
+    public static final String EMAIL_KEY = "email";
     public final Context MainContext = this;
+
+    public static final String SCROLL_SPEED_KEY = "SCROLL_SPEED";
+    public static final String NUM_CONTACTS_KEY = "NUM_CONTACTS";
+    public static final String NUM_MESSAGES_KEY = "NUM_MESSAGES";
+
+    public static final int NUM_MESSAGES_DEFAULT = 0;
+    public static final int NUM_CONTACTS_DEFAULT = 0;
+    public static final int SCROLL_SPEED_DEFAULT = 3;
+
+    public static final String SCROLL_SPEED_DEFAULT_KEY = "SCROLL_SPEED_DEFAULT";
+    public static final String NUM_CONTACTS_DEFAULT_KEY = "NUM_CONTACTS_DEFAULT";
+    public static final String NUM_MESSAGES_DEFAULT_KEY = "NUM_MESSAGES_DEFAULT";
+
     /**
      * Activity Lifecycle methods
      * On Create: Start Service
@@ -139,19 +149,27 @@ public class MainActivity extends Activity {
         mVibrator = ((Vibrator) getSystemService(VIBRATOR_SERVICE));
         isVibrating = false;
 
-        // initialize in-memory settings object
-        SharedPreferences sp = getSharedPreferences(SP_SETTINGS, MODE_PRIVATE);
-        mSettings = new JSONObject();
-
-        if(haveBackend){
+        if(mGetSettingsFromBackend){
             MyGETJSON webContactString = new MyGETJSON();
             webContactString.execute("contacts");
             Log.v(TAG, "after execute");
         }
         else {
+            /*
+            SharedPreferences.Editor editor = getSharedPreferences(SP_SETTINGS, MODE_PRIVATE).edit();
+            editor.putInt(NUM_CONTACTS_DEFAULT_KEY, NUM_CONTACTS_DEFAULT);
+            editor.putInt(SCROLL_SPEED_DEFAULT_KEY, SCROLL_SPEED_DEFAULT);
+            editor.putInt(NUM_MESSAGES_DEFAULT_KEY, NUM_MESSAGES_DEFAULT);
+            editor.commit();
+            */
+
+            // initialize in-memory settings object
+            mSettings = new JSONObject();
+
             try {
+                SharedPreferences sp = getSharedPreferences(SP_SETTINGS, MODE_PRIVATE);
+                mSettings.put(NUM_MESSAGES_KEY, sp.getInt(NUM_MESSAGES_KEY, NUM_MESSAGES_DEFAULT));
                 mSettings.put(SCROLL_SPEED_KEY, sp.getInt(SCROLL_SPEED_KEY, SCROLL_SPEED_DEFAULT));
-                getSharedPreferences(SP_SETTINGS, MODE_PRIVATE).edit().putInt(NUM_CONTACTS_KEY, NUM_CONTACTS_DEFAULT).commit();
                 mSettings.put(NUM_CONTACTS_KEY, sp.getInt(NUM_CONTACTS_KEY, NUM_CONTACTS_DEFAULT));
 
                 // iterate through all contacts in SP, add to in-memory settings object
@@ -159,8 +177,11 @@ public class MainActivity extends Activity {
                 for (int i = 1; i <= num_contacts; i++) {
                     String name_key = "contact_" + i + "_name";
                     String number_key = "contact_" + i + "_number";
+                    String email_key = "contact_" + i + "_email";
+
                     mSettings.put(name_key, sp.getString(name_key, ""));
                     mSettings.put(number_key, sp.getString(number_key, ""));
+                    mSettings.put(email_key, sp.getString(email_key, ""));
                 }
 
             } catch (JSONException e) {
@@ -211,7 +232,7 @@ public class MainActivity extends Activity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         Log.e("SETTINGS", "onActivityResult, reqCode = " + requestCode + ", resultCode = " + resultCode);
 
-        if (resultCode != RESULT_OK)
+        if (resultCode != RESULT_OK && !mGetSettingsFromBackend)
             return;
 
         if (requestCode == 1) {
@@ -222,20 +243,22 @@ public class MainActivity extends Activity {
         else if (requestCode == 2) {
             final String name = data.getStringExtra(NAME_KEY);
             final String number = data.getStringExtra(NUMBER_KEY);
+            final String email = data.getStringExtra(EMAIL_KEY);
             assert name.length() > 0;
             assert number.length() == 10;
-            addContact(name, number);
+            assert email.length() > 0;
+            addContact(name, number, email);
         }
 
-        Log.e("DATA", mSettings.toString());
+        Log.e("SETTINGS", mSettings.toString());
         sendToGlass(mSettings);
-        //sendToGlass(mSettings);
     }
 
-    public void addContact(final String name, final String number) {
+    public void addContact(final String name, final String number, final String email) {
         final int contact_number = getSharedPreferences(SP_SETTINGS, MODE_PRIVATE).getInt(NUM_CONTACTS_KEY, NUM_CONTACTS_DEFAULT) + 1; // we're adding a contact
         final String name_key = "contact_" + contact_number + "_name";
         final String number_key = "contact_" + contact_number + "_number";
+        final String email_key = "contact_" + contact_number + "_email";
 
         // error on callers part
         if (name == null || number == null || name.equals("") || number.equals(""))
@@ -245,6 +268,7 @@ public class MainActivity extends Activity {
         SharedPreferences.Editor editor = getSharedPreferences(SP_SETTINGS, MODE_PRIVATE).edit();
         editor.putString(name_key, name);
         editor.putString(number_key, number);
+        editor.putString(email_key, email);
         editor.putInt(NUM_CONTACTS_KEY, contact_number);
         editor.commit();
 
@@ -252,6 +276,7 @@ public class MainActivity extends Activity {
         try {
             mSettings.put(name_key, name);
             mSettings.put(number_key, number);
+            mSettings.put(email_key, email);
         } catch (JSONException e) {
             e.printStackTrace();
         }

@@ -22,12 +22,20 @@
         android:layout_below="@+id/etName"
         android:inputType="phone" />
 
+    <EditText
+        android:id="@+id/etEmail"
+        android:hint="Enter email here..."
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/etNumber"
+        android:inputType="textEmailAddress" />
+
     <Button
         android:id="@+id/btnSave"
         android:text="Save"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/etNumber"/>
+        android:layout_below="@+id/etEmail"/>
 
     <Button
         android:id="@+id/btnCancel"
