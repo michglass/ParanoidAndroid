@@ -83,13 +83,12 @@ public class MainActivity extends Activity {
     private Vibrator mVibrator;
     private boolean isVibrating;
 
-    private final boolean mGetSettingsFromBackend = true;
-
     private JSONObject mSettings;
     private static final String SP_SETTINGS = "settings";
     public static final String NAME_KEY = "name";
     public static final String NUMBER_KEY = "number";
     public static final String EMAIL_KEY = "email";
+    public static final String MESSAGE_KEY = "message";
     public final Context MainContext = this;
 
     public static final String SCROLL_SPEED_KEY = "SCROLL_SPEED";
@@ -145,90 +144,110 @@ public class MainActivity extends Activity {
         mVibrator = ((Vibrator) getSystemService(VIBRATOR_SERVICE));
         isVibrating = false;
 
-        if(mGetSettingsFromBackend){
-            MyGETJSON webContactString = new MyGETJSON();
-            webContactString.execute("contacts");
-            Log.v(TAG, "after execute");
-        }
-        else {
-            // initialize in-memory settings object
-            mSettings = new JSONObject();
+        // dialog for choosing settings sync option
+        DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                switch (which) {
+                    case DialogInterface.BUTTON_POSITIVE:
+                        MyGETJSON webContactString = new MyGETJSON();
+                        webContactString.execute("contacts");
+                        Log.v(TAG, "after execute");
+                        break;
 
-            try {
-                // set default values for number of contacts, messages and scroll speed
-                SharedPreferences sp = getSharedPreferences(SP_SETTINGS, MODE_PRIVATE);
-                mSettings.put(NUM_MESSAGES_KEY, sp.getInt(NUM_MESSAGES_KEY, NUM_MESSAGES_DEFAULT));
-                mSettings.put(SCROLL_SPEED_KEY, sp.getInt(SCROLL_SPEED_KEY, SCROLL_SPEED_DEFAULT));
-                mSettings.put(NUM_CONTACTS_KEY, sp.getInt(NUM_CONTACTS_KEY, NUM_CONTACTS_DEFAULT));
+                    case DialogInterface.BUTTON_NEGATIVE:
+                        // initialize in-memory settings object
+                        mSettings = new JSONObject();
 
-                // iterate through all contacts in SP, add to in-memory settings object
-                final int num_contacts = mSettings.getInt(NUM_CONTACTS_KEY);
-                for (int i = 1; i <= num_contacts; i++) {
-                    String name_key = "contact_" + i + "_name";
-                    String number_key = "contact_" + i + "_number";
-                    String email_key = "contact_" + i + "_email";
+                        try {
+                            // set default values for number of contacts, messages and scroll speed
+                            SharedPreferences sp = getSharedPreferences(SP_SETTINGS, MODE_PRIVATE);
+                            mSettings.put(NUM_MESSAGES_KEY, sp.getInt(NUM_MESSAGES_KEY, NUM_MESSAGES_DEFAULT));
+                            mSettings.put(SCROLL_SPEED_KEY, sp.getInt(SCROLL_SPEED_KEY, SCROLL_SPEED_DEFAULT));
+                            mSettings.put(NUM_CONTACTS_KEY, sp.getInt(NUM_CONTACTS_KEY, NUM_CONTACTS_DEFAULT));
 
-                    mSettings.put(name_key, sp.getString(name_key, ""));
-                    mSettings.put(number_key, sp.getString(number_key, ""));
-                    mSettings.put(email_key, sp.getString(email_key, ""));
+                            // iterate through all contacts in SP, add to in-memory settings object
+                            final int num_contacts = mSettings.getInt(NUM_CONTACTS_KEY);
+                            for (int i = 1; i <= num_contacts; i++) {
+                                String name_key = "contact_" + i + "_name";
+                                String number_key = "contact_" + i + "_number";
+                                String email_key = "contact_" + i + "_email";
+
+                                mSettings.put(name_key, sp.getString(name_key, ""));
+                                mSettings.put(number_key, sp.getString(number_key, ""));
+                                mSettings.put(email_key, sp.getString(email_key, ""));
+                            }
+
+                            // iterate through all messages in SP, add to in-memory settings object
+                            final int num_messages = mSettings.getInt(NUM_MESSAGES_KEY);
+                            for (int i = 1; i <= num_messages; i++) {
+                                String message_key = "message_" + i;
+                                mSettings.put(message_key, sp.getString(message_key, ""));
+                            }
+
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+
+                        findViewById(R.id.btnSettings).setOnLongClickListener(new View.OnLongClickListener() {
+                            @Override
+                            public boolean onLongClick(View v) {
+
+                                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+
+                                builder.setTitle("Choose a settings option")
+                                        .setItems(R.array.settings, new DialogInterface.OnClickListener() {
+                                            public void onClick(DialogInterface dialog, int which) {
+                                                Intent intent = new Intent();
+                                                int reqCode = 0;
+
+                                                switch (which) {
+                                                    case 0:
+                                                        // change scroll speed
+                                                        intent.setClass(MainActivity.this, UpdateScrollSpeedActivity.class);
+                                                        reqCode = 1;
+                                                        break;
+                                                    case 1:
+                                                        // add a contact
+                                                        intent.setClass(MainActivity.this, NewContactActivity.class);
+                                                        reqCode = 2;
+                                                        break;
+                                                    case 2:
+                                                        intent.setClass(MainActivity.this, NewMessageActivity.class);
+                                                        reqCode = 3;
+                                                        break;
+                                                    case 3:
+                                                        // cancel
+                                                        return;
+                                                }
+
+                                                assert reqCode != 0;
+                                                startActivityForResult(intent, reqCode);
+                                            }
+                                        });
+
+                                builder.create().show();
+
+                                return false;
+                            }
+                        });
+                        break;
                 }
-
-                // iterate through all messages in SP, add to in-memory settings object
-                final int num_messages = mSettings.getInt(NUM_MESSAGES_KEY);
-                for (int i = 1; i <= num_messages; i++) {
-                    String message_key = "message_" + i;
-                    mSettings.put(message_key, sp.getString(message_key, ""));
-                }
-
-            } catch (JSONException e) {
-                e.printStackTrace();
             }
+        };
 
-            findViewById(R.id.btnSettings).setOnLongClickListener(new View.OnLongClickListener() {
-                @Override
-                public boolean onLongClick(View v) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+        builder.setMessage("Retrieve settings from the Internet?")
+                .setPositiveButton("Yes", dialogClickListener)
+                .setNegativeButton("No", dialogClickListener)
+                .create().show();
 
-                    AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-
-                    builder.setTitle("Choose a settings option")
-                            .setItems(R.array.settings, new DialogInterface.OnClickListener() {
-                                public void onClick(DialogInterface dialog, int which) {
-                                    Intent intent = new Intent();
-                                    int reqCode = 0;
-
-                                    switch (which) {
-                                        case 0:
-                                            // change scroll speed
-                                            intent.setClass(MainActivity.this, UpdateScrollSpeedActivity.class);
-                                            reqCode = 1;
-                                            break;
-                                        case 1:
-                                            // add a contact
-                                            intent.setClass(MainActivity.this, NewContactActivity.class);
-                                            reqCode = 2;
-                                            break;
-                                        case 2:
-                                            // cancel
-                                            return;
-                                    }
-
-                                    assert reqCode != 0;
-                                    startActivityForResult(intent, reqCode);
-                                }
-                            });
-
-                    builder.create().show();
-
-                    return false;
-                }
-            });
-        }
     }
 
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         Log.e("SETTINGS", "onActivityResult, reqCode = " + requestCode + ", resultCode = " + resultCode);
 
-        if (resultCode != RESULT_OK && !mGetSettingsFromBackend)
+        if (resultCode != RESULT_OK)
             return;
 
         if (requestCode == 1) {
@@ -245,9 +264,36 @@ public class MainActivity extends Activity {
             assert email.length() > 0;
             addContact(name, number, email);
         }
+        else if (requestCode == 3) {
+            final String message = data.getStringExtra(MESSAGE_KEY);
+            assert message.length() > 0;
+            addMessage(message);
+        }
 
-        Log.e("SETTINGS", mSettings.toString());
+        Log.e("SETTINGS", "settings updated: " + mSettings.toString());
         sendToGlass(mSettings);
+    }
+
+    private void addMessage(final String message) {
+        final int message_number = getSharedPreferences(SP_SETTINGS, MODE_PRIVATE).getInt(NUM_MESSAGES_KEY, NUM_MESSAGES_DEFAULT) + 1; // we're adding a message
+        final String message_key = "message_" + message_number + message;
+
+        // error on callers part
+        if (message == null || message.length() == 0)
+            return;
+
+        // insert message into local storage, update number of messages
+        SharedPreferences.Editor editor = getSharedPreferences(SP_SETTINGS, MODE_PRIVATE).edit();
+        editor.putString(message_key, message);
+        editor.putInt(NUM_MESSAGES_KEY, message_number);
+        editor.commit();
+
+        try {
+            Log.e("SETTINGS", "adding message: " + message);
+            mSettings.put(message_key, message);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
     }
 
     public void addContact(final String name, final String number, final String email) {
@@ -270,6 +316,7 @@ public class MainActivity extends Activity {
 
         // add contact to in-memory settings object
         try {
+            Log.e("SETTINGS", "adding contact: " + name + ", " + number + ", " + email);
             mSettings.put(name_key, name);
             mSettings.put(number_key, number);
             mSettings.put(email_key, email);
