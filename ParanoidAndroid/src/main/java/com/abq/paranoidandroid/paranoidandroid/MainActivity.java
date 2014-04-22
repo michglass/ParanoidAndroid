@@ -282,7 +282,7 @@ public class MainActivity extends Activity {
 
     private void addMessage(final String message) {
         final int message_number = getSharedPreferences(SP_SETTINGS, MODE_PRIVATE).getInt(NUM_MESSAGES_KEY, NUM_MESSAGES_DEFAULT) + 1; // we're adding a message
-        final String message_key = "message_" + message_number + message;
+        final String message_key = "message_" + message_number;
 
         // error on callers part
         if (message == null || message.length() == 0)
