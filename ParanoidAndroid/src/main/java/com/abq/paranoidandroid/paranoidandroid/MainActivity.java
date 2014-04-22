@@ -83,7 +83,7 @@ public class MainActivity extends Activity {
     private Vibrator mVibrator;
     private boolean isVibrating;
 
-    private JSONObject mSettings;
+    JSONObject mSettings;
     private static final String SP_SETTINGS = "settings";
     public static final String NAME_KEY = "name";
     public static final String NUMBER_KEY = "number";
@@ -758,8 +758,6 @@ public class MainActivity extends Activity {
     @TargetApi(Build.VERSION_CODES.CUPCAKE)
     private class MyGETJSON extends AsyncTask<String, Void, String> {
 
-        String contactString;
-        JSONObject mSettings = new JSONObject();
         String settingArray[] = new String[2];
 
         @Override
@@ -820,68 +818,66 @@ public class MainActivity extends Activity {
             return responseString;
         }
 
-
         @Override
         protected void onPostExecute(String result) {
-            Log.v(TAG, "in post");
-            int num_contacts = 0;
-            int num_messages = 0;
+            Log.v(TAG, "onPostExecute entered for MyGETJSON");
+            myGetJSONUpdateSettings(settingArray);
+        }
+    }
 
-            for (int i = 0; i < settingArray.length; i++) {
-                System.out.println(i + settingArray[i]);
-            }
-            JSONObject webSettings = new JSONObject();
-            JSONArray jsonContacts = null;
-            JSONArray jsonMessages = null;
-            try {
-                jsonContacts = new JSONArray(settingArray[0]);
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
+    private void myGetJSONUpdateSettings(String settingArray[]) {
+        int num_contacts = 0;
+        int num_messages = 0;
+        mSettings = new JSONObject();
+        JSONArray jsonContacts = null;
+        JSONArray jsonMessages = null;
+        try {
+            jsonContacts = new JSONArray(settingArray[0]);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
 
-            try {
-                jsonMessages = new JSONArray(settingArray[1]);
-            } catch (JSONException e){
-                e.printStackTrace();
+        try {
+            jsonMessages = new JSONArray(settingArray[1]);
+        } catch (JSONException e){
+            e.printStackTrace();
+        }
+        System.out.println("Contacts: " + jsonContacts.length());
+        try {
+            mSettings.put(SCROLL_SPEED_KEY, 3);
+            mSettings.put(NUM_CONTACTS_KEY, jsonContacts.length());
+            num_contacts = mSettings.getInt(NUM_CONTACTS_KEY);
+            for (int i = 0; i < num_contacts; i++) {
+                String name_key = "contact_" + (i+1) + "_name";
+                String number_key = "contact_" + (i+1) + "_number";
+                String email_key = "contact_" + (i+1) + "_email";
+                mSettings.put(name_key, jsonContacts.getJSONObject(i).getString("contactName"));
+                mSettings.put(number_key, jsonContacts.getJSONObject(i).getString("contactNumber"));
+                mSettings.put(email_key, jsonContacts.getJSONObject(i).getString("contactEmail"));
             }
-            System.out.println("Contacts: " + jsonContacts.length());
-            try {
-                webSettings.put(SCROLL_SPEED_KEY, 5);
-                webSettings.put(NUM_CONTACTS_KEY, jsonContacts.length() );
-                num_contacts = webSettings.getInt(NUM_CONTACTS_KEY);
-                for (int i = 0; i < num_contacts; i++) {
-                    String name_key = "contact_" + (i+1) + "_name";
-                    String number_key = "contact_" + (i+1) + "_number";
-                    String email_key = "contact_" + (i+1) + "_email";
-                    webSettings.put(name_key, jsonContacts.getJSONObject(i).getString("contactName"));
-                    webSettings.put(number_key, jsonContacts.getJSONObject(i).getString("contactNumber"));
-                    webSettings.put(email_key, jsonContacts.getJSONObject(i).getString("contactEmail"));
-                }
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
 
 
         try{
-            webSettings.put(NUM_MESSAGES_KEY, jsonMessages.length());
-            num_messages = webSettings.getInt(NUM_MESSAGES_KEY);
+            mSettings.put(NUM_MESSAGES_KEY, jsonMessages.length());
+            num_messages = mSettings.getInt(NUM_MESSAGES_KEY);
             for(int i = 0; i < num_messages; i++){
                 String message_key = "message_"+ (i+1);
-                webSettings.put(message_key, jsonMessages.getJSONObject(i).getString("message"));
+                mSettings.put(message_key, jsonMessages.getJSONObject(i).getString("message"));
             }
         } catch(JSONException e){
             e.printStackTrace();
         }
 
-            System.out.println("Websettings: " + webSettings);
+        System.out.println("Websettings: " + mSettings.toString());
 
-            if(num_contacts != 0){
-                Toast.makeText(getApplicationContext(),
-                        "Sent " + num_contacts + " contacts to Glass", Toast.LENGTH_SHORT).show();
-                sendToGlass(webSettings);
-            }
+        if(num_contacts != 0){
+            Toast.makeText(getApplicationContext(),
+                    "Sent " + num_contacts + " contacts to Glass", Toast.LENGTH_SHORT).show();
+            sendToGlass(mSettings);
         }
+
     }
-
-
 }
