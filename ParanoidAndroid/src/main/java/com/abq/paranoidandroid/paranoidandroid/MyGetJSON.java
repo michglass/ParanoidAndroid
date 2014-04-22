@@ -9,6 +9,8 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.json.JSONArray;
 import org.json.JSONObject;
+
+import android.annotation.TargetApi;
 import android.os.AsyncTask;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -16,26 +18,38 @@ import java.net.URI;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
 
 
-private class MyGETJSON extends AsyncTask<String, Void, String> {
+@TargetApi(Build.VERSION_CODES.CUPCAKE)
+class MyGETJSON extends AsyncTask<String, Void, String> {
 
-    public String urlString = "http://glassbackend-12366.onmodulus.net/api";
+    public String urlString = "";
     int serverHeight = -1;
     String contactString;
     String messageString;
     String settingString;
-    mSettings = new JSONObject();
+    //mSettings = new JSONObject();
 
-    private JSONArray handleContacts(String input) {
+    public JSONArray handleContacts(String input) {
+        //MainActivity mActivity = new MainActivity();
         try {
             System.out.println("handleContacts ="+input);
             JSONArray json = new JSONArray(input);
+            for(int i = 0; i <json.length();i++){
+                //mActivity.sendToGlass(json.getJSONObject(i));
+                String name = json.getJSONObject(i).getString("contactName");
+                String email = json.getJSONObject(i).getString("contactEmail");
+                String number = json.getJSONObject(i).getString("contactNumber");
+                contactString = "Contact("+i+") Name: "+name + " Number: "+ number + " Email: " + email;
+                System.out.println(contactString);
+            }
+            //mActivity.sendToGlass(json.getJSONObject(1));
             /*
             System.out.println("array="+json);
 
-            contactString = "Contacts:"+EOL;
+            contactString = "Contacts:";
             for(int i = 0 ; i < json.length(); i++){
                 String name = "contact_" + json.getJSONObject(i).getString("contactName") + "_name";
                 String number = "contact_" + json.getJSONObject(i).getString("contactNumber") + "_number";
@@ -48,8 +62,9 @@ private class MyGETJSON extends AsyncTask<String, Void, String> {
         } catch (Exception e) {
             System.out.println("Exception "+e.getMessage());
         }
+       return null;
     }
-
+    /*
     private void handleMessages(String input) {
         try {
             System.out.println("handleMessages ="+input);
@@ -66,30 +81,33 @@ private class MyGETJSON extends AsyncTask<String, Void, String> {
             System.out.println("Exception "+e.getMessage());
         }
     }
+    */
 
 
     @Override
-    protected JSONArray doInBackground(String... params) {
+    public String doInBackground(String... params) {
         String script = null;
-        contactArray = new JSONArray;
+        String urlString = "http://glassbackend-12366.onmodulus.net/api";
+        String theUrl = "";
+        String responseString = "";
+        //contactArray = new JSONArray;
         for(String whatever : params){
             System.out.println("P="+whatever);
             script = whatever;
         }
         try {
             HttpClient httpclient = new DefaultHttpClient();
-            String theUrl;
             if ( script.startsWith("contacts")){
-                theUrl = urlString+ "/contacts";
+                theUrl = urlString + "/contacts";
 
             }
             else if(script.startsWith("messages")){
-                theUrl = urlString + "/messages"
+                theUrl = urlString + "/messages";
             }
             else if (script.startsWith("settings")){
-                theUrl = urlString + "/glassSettings"
+                theUrl = urlString + "/glassSettings";
             }
-            System.out.println("theUrl="+theUrl);
+            System.out.println("theUrl="+ theUrl);
             URI website = new URI(theUrl);
             HttpGet get = new HttpGet();
             get.setURI(website);
@@ -100,13 +118,12 @@ private class MyGETJSON extends AsyncTask<String, Void, String> {
                 ByteArrayOutputStream out = new ByteArrayOutputStream();
                 response.getEntity().writeTo(out);
                 out.close();
-                String responseString = out.toString();
+                responseString = out.toString();
                 System.out.println("Response\n");
                 System.out.println(responseString);
                 if ( script.startsWith("contacts"))
-                    contactArray = handleContacts(responseString);
-                    return contactArray;
-                if ( script.startsWith("messages")) handleMessages(responseString);
+                    handleContacts(responseString);
+                //if ( script.startsWith("messages")) handleMessages(responseString);
                 //if ( script.startsWith("settings")) handleSettings(responseString);
             } else {
                 //Closes the connection.
@@ -116,7 +133,13 @@ private class MyGETJSON extends AsyncTask<String, Void, String> {
         } catch (Exception e) {
             System.out.println("Exception "+e.getMessage());
         }
-        //return null;
+        return responseString;
+    }
+
+
+    @Override
+    protected void onPostExecute(String result) {
+
     }
 }
 

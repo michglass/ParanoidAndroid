@@ -1,5 +1,6 @@
 package com.abq.paranoidandroid.paranoidandroid;
 
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.PendingIntent;
@@ -11,6 +12,10 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
+import android.hardware.usb.UsbAccessory;
+import android.hardware.usb.UsbManager;
+import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -26,16 +31,24 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Toast;
 
-import com.android.future.usb.UsbAccessory;
-import com.android.future.usb.UsbManager;
+//import com.android.future.usb.UsbAccessory;
+//import com.android.future.usb.UsbManager;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.HttpStatus;
+import org.apache.http.StatusLine;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.DefaultHttpClient;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.ByteArrayOutputStream;
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -74,7 +87,7 @@ public class MainActivity extends Activity {
     private Vibrator mVibrator;
     private boolean isVibrating;
 
-    boolean haveBackend = false;
+    boolean haveBackend = true;
 
     private JSONObject mSettings;
     private static final String SP_SETTINGS = "settings";
@@ -97,6 +110,7 @@ public class MainActivity extends Activity {
      * On Create
      * @param savedInstanceState Saved Instance State
      */
+    @TargetApi(Build.VERSION_CODES.CUPCAKE)
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
         Log.v(TAG, "On Create");
@@ -119,12 +133,12 @@ public class MainActivity extends Activity {
         startService(new Intent(this, BluetoothService.class));
 
         // USB Stuff
-        mUsbManager = UsbManager.getInstance(this);
+        //mUsbManager = UsbManager.getInstance(this);
         mPermissionIntent = PendingIntent.getBroadcast(this, 0,
                 new Intent(ACTION_USB_PERMISSION), 0);
         IntentFilter intentFilter = new IntentFilter(ACTION_USB_PERMISSION);
         intentFilter.addAction(UsbManager.ACTION_USB_ACCESSORY_DETACHED);
-        registerReceiver(mUsbReceiver, intentFilter);
+        //registerReceiver(mUsbReceiver, intentFilter);
 
         mVibrator = ((Vibrator) getSystemService(VIBRATOR_SERVICE));
         isVibrating = false;
@@ -132,19 +146,13 @@ public class MainActivity extends Activity {
         // initialize in-memory settings object
         SharedPreferences sp = getSharedPreferences(SP_SETTINGS, MODE_PRIVATE);
         mSettings = new JSONObject();
-        /*
+
         if(haveBackend){
-            JSONArray webContacts = new JSONArray();
-            contactToSend = new JSONObject();
-            webContacts = new MyGETJSON().execute("contacts");
-            for(int i = 0; i < webContacts.length();i++){
-                contactToSend = webContacts.getJSONObject(i);
-                Log.v(TAG, contactToSen.toString());
-                sendToGlass(contactToSend);
-            }
-            //new MyGETJSON().execute("contacts");
+            MyGETJSON webContactString = new MyGETJSON();
+            webContactString.execute("contacts");
+            Log.v(TAG, "after execute");
         }
-        */
+
         try {
             mSettings.put(SCROLL_SPEED_KEY, sp.getInt(SCROLL_SPEED_KEY, SCROLL_SPEED_DEFAULT));
             getSharedPreferences(SP_SETTINGS, MODE_PRIVATE).edit().putInt(NUM_CONTACTS_KEY, NUM_CONTACTS_DEFAULT).commit();
@@ -224,6 +232,7 @@ public class MainActivity extends Activity {
 
         Log.e("DATA", mSettings.toString());
         sendToGlass(mSettings);
+        //sendToGlass(mSettings);
     }
 
     public void addContact(final String name, final String number) {
@@ -286,7 +295,7 @@ public class MainActivity extends Activity {
         super.onResume();
 
         if(mInputStream != null) { return; }
-
+        /*
         UsbAccessory[] accessories = mUsbManager.getAccessoryList();
         UsbAccessory accessory = (accessories == null ? null : accessories[0]);
         if(accessory != null) {
@@ -304,6 +313,7 @@ public class MainActivity extends Activity {
                 }
             }
         } else { Log.v(TAG, "Accessory is NULL"); }
+        */
     }
     /**
      * On Stop
@@ -340,7 +350,7 @@ public class MainActivity extends Activity {
         BluetoothService.BOUND_COUNT = 0;
 
         // USB
-        unregisterReceiver(mUsbReceiver);
+        //unregisterReceiver(mUsbReceiver);
     }
 
     public void OnButtonClick(View v) {
@@ -359,13 +369,14 @@ public class MainActivity extends Activity {
      * Send SMS
      * Parses a string from glass and sends it as an SMS
      */
+    @TargetApi(Build.VERSION_CODES.DONUT)
     private void sendSMS(JSONObject object) {
         Log.v(TAG, object.toString());
         Log.v(TAG, "Sending SMS...");
         try{
             SmsManager smsManager = SmsManager.getDefault();
             smsManager.sendTextMessage(object.getString("number"), null, object.getString("name"), null, null);
-            Log.v(TAG, "SMS sending complete with message: " + object.getString("name") + " " + object.getString("number"));
+            Log.v(TAG, "SMS sending complete with message: " + object.getString("message") + " " + object.getString("number"));
         }
         catch(JSONException j){
             Log.e(TAG, j.toString());
@@ -499,7 +510,7 @@ public class MainActivity extends Activity {
                                     "Connected", Toast.LENGTH_SHORT).show();
 
                             //TODO send settings to glass
-                            sendToGlass(mSettings);
+                            //sendToGlass(mSettings);
 
                             break;
                         case BluetoothService.STATE_CONNECTING:
@@ -551,7 +562,7 @@ public class MainActivity extends Activity {
             }
         }
     }
-
+    /*
     private final BroadcastReceiver mUsbReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -574,9 +585,10 @@ public class MainActivity extends Activity {
             }
         }
     };
-
+    */
 
     // open accessory
+    /*
     private void openAccessory(UsbAccessory acc) {
 
         mFileDescriptor = mUsbManager.openAccessory(acc);
@@ -591,7 +603,7 @@ public class MainActivity extends Activity {
             Log.v(TAG, "Accessory open");
         } else { Log.v(TAG, "Accessory open fail"); }
     }
-
+    */
     // close accessory
     private void closeAccessory() {
 
@@ -664,4 +676,144 @@ public class MainActivity extends Activity {
             mVibrator.cancel();
         }
     }
+
+    @TargetApi(Build.VERSION_CODES.CUPCAKE)
+    private class MyGETJSON extends AsyncTask<String, Void, String> {
+
+        String contactString;
+        JSONObject mSettings = new JSONObject();
+        String settingArray[] = new String[2];
+
+        public void handleContacts(String input) {
+            try {
+                System.out.println("handleContacts ="+input);
+                JSONArray json = new JSONArray(input);
+                for(int i = 0; i <json.length();i++){
+                    //sendToGlass(json.getJSONObject(i));
+                    String name = json.getJSONObject(i).getString("contactName");
+                    String email = json.getJSONObject(i).getString("contactEmail");
+                    String number = json.getJSONObject(i).getString("contactNumber");
+                    contactString = "Contact("+i+") Name: "+name + " Number: "+ number + " Email: " + email;
+                    System.out.println(contactString);
+                }            /*
+            System.out.println("array="+json);
+
+            contactString = "Contacts:";
+            for(int i = 0 ; i < json.length(); i++){
+                String name = "contact_" + json.getJSONObject(i).getString("contactName") + "_name";
+                String number = "contact_" + json.getJSONObject(i).getString("contactNumber") + "_number";
+                String email = "contact_" + json.getJSONObject(i).getString("contactEmail") + "_email";
+                //Integer games = json.getJSONObject(i).getInt("games");
+                contactString = contactString + "Contact Name: " + name + EOL + "Contact Number " + number + EOL + "Contact Email: "+ email + EOL;
+                System.out.println(contactString);
+            }
+            */
+            } catch (Exception e) {
+                System.out.println("Exception "+e.getMessage());
+            }
+        }
+
+        @Override
+        public String doInBackground(String... params) {
+            String script = null;
+            String urlString = "http://glassbackend-12366.onmodulus.net/api";
+            String contactURL = urlString + "/contacts";
+            String messageURL = urlString + "/messages";
+            String responseString = "";
+
+            //contactArray = new JSONArray;
+            for(String whatever : params){
+                System.out.println("P="+whatever);
+                script = whatever;
+            }
+            try {
+                HttpClient httpclient = new DefaultHttpClient();
+                URI contactWebsite = new URI(contactURL);
+                URI messageWebsite = new URI(messageURL);
+                HttpGet getContacts = new HttpGet();
+                //HttpGet getMessages = new HttpGet();
+                //getMessages.setURI(messageWebsite);
+                getContacts.setURI(contactWebsite);
+                HttpResponse contactResponse = httpclient.execute(getContacts);
+                //HttpResponse messageResponse = httpclient.execute(getMessages);
+                //StatusLine messageStatusLine = messageResponse.getStatusLine();
+                StatusLine contactStatusLine = contactResponse.getStatusLine();
+                System.out.println("SL="+contactStatusLine);
+                if(contactStatusLine.getStatusCode() == HttpStatus.SC_OK){
+                    ByteArrayOutputStream out = new ByteArrayOutputStream();
+                    contactResponse.getEntity().writeTo(out);
+                    out.close();
+                    responseString = out.toString();
+                    System.out.println("Response\n");
+                    System.out.println(responseString);
+                    settingArray[0] = responseString;
+                    //if ( script.startsWith("messages")) handleMessages(responseString);
+                    //if ( script.startsWith("settings")) handleSettings(responseString);
+                } else {
+                    //Closes the connection.
+                    contactResponse.getEntity().getContent().close();
+                    throw new IOException(contactStatusLine.getReasonPhrase());
+                }
+                /*
+                if(messageStatusLine.getStatusCode() == HttpStatus.SC_OK){
+                    ByteArrayOutputStream out = new ByteArrayOutputStream();
+                    messageResponse.getEntity().writeTo(out);
+                    out.close();
+                    responseString = out.toString();
+                    System.out.println("Response\n");
+                    System.out.println(responseString);
+                    settingArray[1] = responseString;
+                } else {
+                    //Closes the connection.
+                    messageResponse.getEntity().getContent().close();
+                    throw new IOException(messageStatusLine.getReasonPhrase());
+                }
+                */
+            } catch (Exception e) {
+                System.out.println("Exception "+e.getMessage());
+            }
+            return responseString;
+        }
+
+
+        @Override
+        protected void onPostExecute(String result) {
+            Log.v(TAG, "in post");
+            int num_contacts = 0;
+            for (int i = 0; i < settingArray.length; i++) {
+                System.out.println(i + settingArray[i]);
+            }
+            JSONObject webSettings = new JSONObject();
+            JSONArray jsonContacts = null;
+            try {
+                jsonContacts = new JSONArray(settingArray[0]);
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+            System.out.println("Contacts: " + jsonContacts.length());
+            try {
+                webSettings.put(SCROLL_SPEED_KEY, 5);
+                webSettings.put(NUM_CONTACTS_KEY, jsonContacts.length() );
+                num_contacts = webSettings.getInt(NUM_CONTACTS_KEY);
+                for (int i = 0; i < num_contacts; i++) {
+                    String name_key = "contact_" + i + "_name";
+                    String number_key = "contact_" + i + "_number";
+                    webSettings.put(name_key, jsonContacts.getJSONObject(i).getString("contactName"));
+                    webSettings.put(number_key, jsonContacts.getJSONObject(i).getString("contactNumber"));
+                }
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+
+            System.out.println("Websettings: " + webSettings);
+
+            if(num_contacts != 0){
+                Toast.makeText(getApplicationContext(),
+                        "Sent " + num_contacts + " contacts to Glass", Toast.LENGTH_SHORT).show();
+               sendToGlass(webSettings);
+            }
+        }
+    }
+
+
 }
