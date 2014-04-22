@@ -150,12 +150,18 @@ public class MainActivity extends Activity {
             public void onClick(DialogInterface dialog, int which) {
                 switch (which) {
                     case DialogInterface.BUTTON_POSITIVE:
+                        Log.e("SETTINGS", "User selected internet option for settings");
+
                         MyGETJSON webContactString = new MyGETJSON();
                         webContactString.execute("contacts");
                         Log.v(TAG, "after execute");
+
+                        findViewById(R.id.btnSettings).setEnabled(false);
                         break;
 
                     case DialogInterface.BUTTON_NEGATIVE:
+                        Log.e("SETTINGS", "User did not select internet option for settings");
+
                         // initialize in-memory settings object
                         mSettings = new JSONObject();
 
@@ -291,6 +297,7 @@ public class MainActivity extends Activity {
         try {
             Log.e("SETTINGS", "adding message: " + message);
             mSettings.put(message_key, message);
+            mSettings.put(NUM_MESSAGES_KEY, message_number);
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -320,6 +327,7 @@ public class MainActivity extends Activity {
             mSettings.put(name_key, name);
             mSettings.put(number_key, number);
             mSettings.put(email_key, email);
+            mSettings.put(NUM_CONTACTS_KEY, contact_number);
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -497,6 +505,12 @@ public class MainActivity extends Activity {
      * @param json Json Message we want to send to glass
      */
     private void sendToGlass(JSONObject json) {
+
+        if (json == null) {
+            Log.e(TAG, "json was null in sendToGlass!");
+            return;
+        }
+
         byte[] glassmsg = json.toString().getBytes();
 
         sendToGlass(glassmsg);
@@ -575,8 +589,7 @@ public class MainActivity extends Activity {
                                     "Connected", Toast.LENGTH_SHORT).show();
 
                             //TODO send settings to glass
-                            //sendToGlass(mSettings);
-
+                            sendToGlass(mSettings);
                             break;
                         case BluetoothService.STATE_CONNECTING:
                             Toast.makeText(getApplicationContext(),

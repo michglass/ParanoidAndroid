@@ -30,14 +30,22 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
         <activity
             android:name="com.abq.paranoidandroid.paranoidandroid.NewMessageActivity"
-            android:label="@string/title_activity_new_message"
-            android:parentActivityName="com.abq.paranoidandroid.paranoidandroid.MainActivity" >
-            <meta-data
-                android:name="android.support.PARENT_ACTIVITY"
-                android:value="MainActivity" />
+            android:label="@string/title_activity_new_message">
         </activity>
+
+        <activity
+            android:name="com.abq.paranoidandroid.paranoidandroid.NewContactActivity"
+            android:label="@string/title_activity_new_contact">
+        </activity>
+
+        <activity
+            android:name="com.abq.paranoidandroid.paranoidandroid.UpdateScrollSpeedActivity"
+            android:label="@string/title_activity_update_scroll_speed">
+        </activity>
+
     </application>
 
 </manifest>
