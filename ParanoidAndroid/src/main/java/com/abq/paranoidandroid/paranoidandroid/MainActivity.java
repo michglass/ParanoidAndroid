@@ -699,12 +699,10 @@ public class MainActivity extends Activity {
                 URI contactWebsite = new URI(contactURL);
                 URI messageWebsite = new URI(messageURL);
                 HttpGet getContacts = new HttpGet();
-                //HttpGet getMessages = new HttpGet();
-                //getMessages.setURI(messageWebsite);
+
                 getContacts.setURI(contactWebsite);
                 HttpResponse contactResponse = httpclient.execute(getContacts);
-                //HttpResponse messageResponse = httpclient.execute(getMessages);
-                //StatusLine messageStatusLine = messageResponse.getStatusLine();
+
                 StatusLine contactStatusLine = contactResponse.getStatusLine();
                 System.out.println("SL="+contactStatusLine);
                 if(contactStatusLine.getStatusCode() == HttpStatus.SC_OK){
@@ -722,7 +720,11 @@ public class MainActivity extends Activity {
                     contactResponse.getEntity().getContent().close();
                     throw new IOException(contactStatusLine.getReasonPhrase());
                 }
-                /*
+
+                HttpGet getMessages = new HttpGet();
+                getMessages.setURI(messageWebsite);
+                HttpResponse messageResponse = httpclient.execute(getMessages);
+                StatusLine messageStatusLine = messageResponse.getStatusLine();
                 if(messageStatusLine.getStatusCode() == HttpStatus.SC_OK){
                     ByteArrayOutputStream out = new ByteArrayOutputStream();
                     messageResponse.getEntity().writeTo(out);
@@ -736,7 +738,6 @@ public class MainActivity extends Activity {
                     messageResponse.getEntity().getContent().close();
                     throw new IOException(messageStatusLine.getReasonPhrase());
                 }
-                */
             } catch (Exception e) {
                 System.out.println("Exception "+e.getMessage());
             }
@@ -748,14 +749,23 @@ public class MainActivity extends Activity {
         protected void onPostExecute(String result) {
             Log.v(TAG, "in post");
             int num_contacts = 0;
+            int num_messages = 0;
+
             for (int i = 0; i < settingArray.length; i++) {
                 System.out.println(i + settingArray[i]);
             }
             JSONObject webSettings = new JSONObject();
             JSONArray jsonContacts = null;
+            JSONArray jsonMessages = null;
             try {
                 jsonContacts = new JSONArray(settingArray[0]);
             } catch (JSONException e) {
+                e.printStackTrace();
+            }
+
+            try {
+                jsonMessages = new JSONArray(settingArray[1]);
+            } catch (JSONException e){
                 e.printStackTrace();
             }
             System.out.println("Contacts: " + jsonContacts.length());
@@ -763,13 +773,21 @@ public class MainActivity extends Activity {
                 webSettings.put(SCROLL_SPEED_KEY, 5);
                 webSettings.put(NUM_CONTACTS_KEY, jsonContacts.length() );
                 num_contacts = webSettings.getInt(NUM_CONTACTS_KEY);
-                for (int i = 0; i < num_contacts; i++) {
+                for (int i = 1; i <= num_contacts; i++) {
                     String name_key = "contact_" + i + "_name";
                     String number_key = "contact_" + i + "_number";
-                    webSettings.put(name_key, jsonContacts.getJSONObject(i).getString("contactName"));
-                    webSettings.put(number_key, jsonContacts.getJSONObject(i).getString("contactNumber"));
+                    String email_key = "contact_" + i + "_email";
+                    webSettings.put(name_key, jsonContacts.getJSONObject(i--).getString("contactName"));
+                    webSettings.put(number_key, jsonContacts.getJSONObject(i--).getString("contactNumber"));
+                    webSettings.put(email_key, jsonContacts.getJSONObject(i--).getString("email"));
                 }
             } catch (JSONException e) {
+                e.printStackTrace();
+            }
+
+            try{
+                
+            } catch(JSONException e){
                 e.printStackTrace();
             }
 
