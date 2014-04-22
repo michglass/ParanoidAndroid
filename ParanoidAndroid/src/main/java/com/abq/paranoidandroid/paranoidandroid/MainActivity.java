@@ -623,7 +623,7 @@ public class MainActivity extends Activity {
                         Log.v(TAG, message.getString("type"));
                         if(message.getString("type").equals("email")){
                             Email e = new Email(message.getString("emailAddress"),
-                                    "Sent From google glass!",message.getString("message"), MainContext);
+                                    "Sent From google glass to " + message.getString("name"),message.getString("message"), MainContext);
                             Log.v(TAG, "THIS HAPPENS!!!!!!!");
                             e.sendEmail();
                         }
