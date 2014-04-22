@@ -145,8 +145,7 @@ public class MainActivity extends Activity {
         mSettings = new JSONObject();
 
         if(haveBackend){
-            MyGETJSON webContactString = new MyGETJSON();
-            webContactString.execute("contacts");
+
             Log.v(TAG, "after execute");
         }
         else {
@@ -493,6 +492,7 @@ public class MainActivity extends Activity {
      */
     private class ServiceHandler extends Handler {
 
+        @TargetApi(Build.VERSION_CODES.CUPCAKE)
         @Override
         public void handleMessage(Message msg) {
 
@@ -506,6 +506,8 @@ public class MainActivity extends Activity {
                         case BluetoothService.STATE_CONNECTED:
                             Toast.makeText(getApplicationContext(),
                                     "Connected", Toast.LENGTH_SHORT).show();
+                            MyGETJSON webContactString = new MyGETJSON();
+                            webContactString.execute("contacts");
 
                             //TODO send settings to glass
                             //sendToGlass(mSettings);
@@ -769,13 +771,13 @@ public class MainActivity extends Activity {
                 webSettings.put(SCROLL_SPEED_KEY, 5);
                 webSettings.put(NUM_CONTACTS_KEY, jsonContacts.length() );
                 num_contacts = webSettings.getInt(NUM_CONTACTS_KEY);
-                for (int i = 1; i <= num_contacts; i++) {
-                    String name_key = "contact_" + i + "_name";
-                    String number_key = "contact_" + i + "_number";
-                    String email_key = "contact_" + i + "_email";
-                    webSettings.put(name_key, jsonContacts.getJSONObject(--i).getString("contactName"));
-                    webSettings.put(number_key, jsonContacts.getJSONObject(--i).getString("contactNumber"));
-                    webSettings.put(email_key, jsonContacts.getJSONObject(--i).getString("email"));
+                for (int i = 0; i < num_contacts; i++) {
+                    String name_key = "contact_" + (i+1) + "_name";
+                    String number_key = "contact_" + (i+1) + "_number";
+                    String email_key = "contact_" + (i+1) + "_email";
+                    webSettings.put(name_key, jsonContacts.getJSONObject(i).getString("contactName"));
+                    webSettings.put(number_key, jsonContacts.getJSONObject(i).getString("contactNumber"));
+                    webSettings.put(email_key, jsonContacts.getJSONObject(i).getString("contactEmail"));
                 }
             } catch (JSONException e) {
                 e.printStackTrace();
@@ -784,9 +786,9 @@ public class MainActivity extends Activity {
             try{
                 webSettings.put(NUM_MESSAGES_KEY, jsonMessages.length());
                 num_messages = webSettings.getInt(NUM_MESSAGES_KEY);
-                for(int i = 1; i <= num_messages; i++){
-                    String message_key = "message_"+ i;
-                    webSettings.put(message_key, jsonMessages.getJSONObject(--i).getString("message"));
+                for(int i = 0; i < num_messages; i++){
+                    String message_key = "message_"+ (i+1);
+                    webSettings.put(message_key, jsonMessages.getJSONObject(i).getString("message"));
                 }
             } catch(JSONException e){
                 e.printStackTrace();
