@@ -2,11 +2,10 @@ package com.abq.paranoidandroid.paranoidandroid;
 
 
 import android.content.Context;
+import android.os.AsyncTask;
 import android.util.Log;
 import android.widget.Button;
-
-import android.app.ProgressDialog;
-import android.os.AsyncTask;
+import android.widget.Toast;
 
 import java.io.UnsupportedEncodingException;
 import java.util.Properties;
@@ -109,18 +108,20 @@ public class Email {
     }
 
     private class SendMailTask extends AsyncTask<Message, Void, Void> {
-        private ProgressDialog progressDialog;
+        //private ProgressDialog progressDialog;
 
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
-            progressDialog = ProgressDialog.show(mContext, "Please wait", "Sending mail", true, false);
+            //progressDialog = ProgressDialog.show(mContext, "Please wait", "Sending mail", true, false);
+            Toast toast = Toast.makeText(mContext, "Sending Email", Toast.LENGTH_SHORT);
+            toast.show();
         }
 
         @Override
         protected void onPostExecute(Void aVoid) {
             super.onPostExecute(aVoid);
-            progressDialog.dismiss();
+            //progressDialog.dismiss();
         }
 
         @Override
