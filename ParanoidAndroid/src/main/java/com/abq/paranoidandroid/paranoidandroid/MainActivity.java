@@ -675,35 +675,6 @@ public class MainActivity extends Activity {
         JSONObject mSettings = new JSONObject();
         String settingArray[] = new String[2];
 
-        public void handleContacts(String input) {
-            try {
-                System.out.println("handleContacts ="+input);
-                JSONArray json = new JSONArray(input);
-                for(int i = 0; i <json.length();i++){
-                    //sendToGlass(json.getJSONObject(i));
-                    String name = json.getJSONObject(i).getString("contactName");
-                    String email = json.getJSONObject(i).getString("contactEmail");
-                    String number = json.getJSONObject(i).getString("contactNumber");
-                    contactString = "Contact("+i+") Name: "+name + " Number: "+ number + " Email: " + email;
-                    System.out.println(contactString);
-                }            /*
-            System.out.println("array="+json);
-
-            contactString = "Contacts:";
-            for(int i = 0 ; i < json.length(); i++){
-                String name = "contact_" + json.getJSONObject(i).getString("contactName") + "_name";
-                String number = "contact_" + json.getJSONObject(i).getString("contactNumber") + "_number";
-                String email = "contact_" + json.getJSONObject(i).getString("contactEmail") + "_email";
-                //Integer games = json.getJSONObject(i).getInt("games");
-                contactString = contactString + "Contact Name: " + name + EOL + "Contact Number " + number + EOL + "Contact Email: "+ email + EOL;
-                System.out.println(contactString);
-            }
-            */
-            } catch (Exception e) {
-                System.out.println("Exception "+e.getMessage());
-            }
-        }
-
         @Override
         public String doInBackground(String... params) {
             String script = null;
