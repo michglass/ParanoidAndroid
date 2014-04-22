@@ -100,10 +100,6 @@ public class MainActivity extends Activity {
     public static final int NUM_CONTACTS_DEFAULT = 0;
     public static final int SCROLL_SPEED_DEFAULT = 3;
 
-    public static final String SCROLL_SPEED_DEFAULT_KEY = "SCROLL_SPEED_DEFAULT";
-    public static final String NUM_CONTACTS_DEFAULT_KEY = "NUM_CONTACTS_DEFAULT";
-    public static final String NUM_MESSAGES_DEFAULT_KEY = "NUM_MESSAGES_DEFAULT";
-
     /**
      * Activity Lifecycle methods
      * On Create: Start Service
@@ -155,18 +151,11 @@ public class MainActivity extends Activity {
             Log.v(TAG, "after execute");
         }
         else {
-            /*
-            SharedPreferences.Editor editor = getSharedPreferences(SP_SETTINGS, MODE_PRIVATE).edit();
-            editor.putInt(NUM_CONTACTS_DEFAULT_KEY, NUM_CONTACTS_DEFAULT);
-            editor.putInt(SCROLL_SPEED_DEFAULT_KEY, SCROLL_SPEED_DEFAULT);
-            editor.putInt(NUM_MESSAGES_DEFAULT_KEY, NUM_MESSAGES_DEFAULT);
-            editor.commit();
-            */
-
             // initialize in-memory settings object
             mSettings = new JSONObject();
 
             try {
+                // set default values for number of contacts, messages and scroll speed
                 SharedPreferences sp = getSharedPreferences(SP_SETTINGS, MODE_PRIVATE);
                 mSettings.put(NUM_MESSAGES_KEY, sp.getInt(NUM_MESSAGES_KEY, NUM_MESSAGES_DEFAULT));
                 mSettings.put(SCROLL_SPEED_KEY, sp.getInt(SCROLL_SPEED_KEY, SCROLL_SPEED_DEFAULT));
@@ -182,6 +171,13 @@ public class MainActivity extends Activity {
                     mSettings.put(name_key, sp.getString(name_key, ""));
                     mSettings.put(number_key, sp.getString(number_key, ""));
                     mSettings.put(email_key, sp.getString(email_key, ""));
+                }
+
+                // iterate through all messages in SP, add to in-memory settings object
+                final int num_messages = mSettings.getInt(NUM_MESSAGES_KEY);
+                for (int i = 1; i <= num_messages; i++) {
+                    String message_key = "message_" + i;
+                    mSettings.put(message_key, sp.getString(message_key, ""));
                 }
 
             } catch (JSONException e) {
@@ -810,11 +806,12 @@ public class MainActivity extends Activity {
                 e.printStackTrace();
             }
 
+            /*
             try{
                 
             } catch(JSONException e){
                 e.printStackTrace();
-            }
+            } */
 
             System.out.println("Websettings: " + webSettings);
 
