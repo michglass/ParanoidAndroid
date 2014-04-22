@@ -4,7 +4,6 @@ import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.PendingIntent;
-import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -31,9 +30,6 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Toast;
 
-//import com.android.future.usb.UsbAccessory;
-//import com.android.future.usb.UsbManager;
-
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.StatusLine;
@@ -45,13 +41,13 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
-import java.io.FileDescriptor;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
+
+//import com.android.future.usb.UsbAccessory;
+//import com.android.future.usb.UsbManager;
 
 
 
@@ -92,7 +88,7 @@ public class MainActivity extends Activity {
     private JSONObject mSettings;
     private static final String SP_SETTINGS = "settings";
     public static final String SCROLL_SPEED_KEY = "SCROLL_SPEED";
-    public static final int SCROLL_SPEED_DEFAULT = 5;
+    public static final int SCROLL_SPEED_DEFAULT = 3;
     public static final String NUM_CONTACTS_KEY = "NUM_CONTACTS";
     public static final int NUM_CONTACTS_DEFAULT = 0;
     public static final String NAME_KEY = "name";
@@ -152,82 +148,87 @@ public class MainActivity extends Activity {
             webContactString.execute("contacts");
             Log.v(TAG, "after execute");
         }
+        else {
+            try {
+                mSettings.put(SCROLL_SPEED_KEY, sp.getInt(SCROLL_SPEED_KEY, SCROLL_SPEED_DEFAULT));
+                getSharedPreferences(SP_SETTINGS, MODE_PRIVATE).edit().putInt(NUM_CONTACTS_KEY, NUM_CONTACTS_DEFAULT).commit();
+                mSettings.put(NUM_CONTACTS_KEY, sp.getInt(NUM_CONTACTS_KEY, NUM_CONTACTS_DEFAULT));
 
-        try {
-            mSettings.put(SCROLL_SPEED_KEY, sp.getInt(SCROLL_SPEED_KEY, SCROLL_SPEED_DEFAULT));
-            mSettings.put(NUM_CONTACTS_KEY, sp.getInt(NUM_CONTACTS_KEY, NUM_CONTACTS_DEFAULT));
+                // iterate through all contacts in SP, add to in-memory settings object
+                final int num_contacts = mSettings.getInt(NUM_CONTACTS_KEY);
+                for (int i = 1; i <= num_contacts; i++) {
+                    String name_key = "contact_" + i + "_name";
+                    String number_key = "contact_" + i + "_number";
+                    mSettings.put(name_key, sp.getString(name_key, ""));
+                    mSettings.put(number_key, sp.getString(number_key, ""));
+                }
 
-            // iterate through all contacts in SP, add to in-memory settings object
-            final int num_contacts = mSettings.getInt(NUM_CONTACTS_KEY);
-            for (int i = 1; i <= num_contacts; i++) {
-                String name_key = "contact_" + i + "_name";
-                String number_key = "contact_" + i + "_number";
-                mSettings.put(name_key, sp.getString(name_key, ""));
-                mSettings.put(number_key, sp.getString(number_key, ""));
+            } catch (JSONException e) {
+                e.printStackTrace();
             }
 
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
+            findViewById(R.id.btnSettings).setOnLongClickListener(new View.OnLongClickListener() {
+                @Override
+                public boolean onLongClick(View v) {
 
-        findViewById(R.id.btnSettings).setOnLongClickListener(new View.OnLongClickListener() {
-            @Override
-            public boolean onLongClick(View v) {
+                    AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
 
-                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+                    builder.setTitle("Choose a settings option")
+                            .setItems(R.array.settings, new DialogInterface.OnClickListener() {
+                                public void onClick(DialogInterface dialog, int which) {
+                                    Intent intent = new Intent();
+                                    int reqCode = 0;
 
-                builder.setTitle("Choose a settings option")
-                        .setItems(R.array.settings, new DialogInterface.OnClickListener() {
-                            public void onClick(DialogInterface dialog, int which) {
-                                Intent intent = new Intent();
-                                int reqCode = 0;
+                                    switch (which) {
+                                        case 0:
+                                            // change scroll speed
+                                            intent.setClass(MainActivity.this, UpdateScrollSpeedActivity.class);
+                                            reqCode = 1;
+                                            break;
+                                        case 1:
+                                            // add a contact
+                                            intent.setClass(MainActivity.this, NewContactActivity.class);
+                                            reqCode = 2;
+                                            break;
+                                        case 2:
+                                            // cancel
+                                            return;
+                                    }
 
-                                switch (which) {
-                                    case 0:
-                                        // change scroll speed
-                                        intent.setClass(MainActivity.this, UpdateScrollSpeedActivity.class);
-                                        reqCode = 1;
-                                        break;
-                                    case 1:
-                                        // add a contact
-                                        intent.setClass(MainActivity.this, NewContactActivity.class);
-                                        reqCode = 2;
-                                        break;
-                                    case 2:
-                                        // cancel
-                                        return;
+                                    assert reqCode != 0;
+                                    startActivityForResult(intent, reqCode);
                                 }
+                            });
 
-                                assert reqCode != 0;
-                                startActivityForResult(intent, reqCode);
-                            }
-                        });
+                    builder.create().show();
 
-                builder.create().show();
-
-                return false;
-            }
-        });
+                    return false;
+                }
+            });
+        }
     }
 
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        Log.e("SETTINGS", "onActivityResult, reqCode = " + requestCode + ", resultCode = " + resultCode);
 
         if (resultCode != RESULT_OK)
             return;
 
         if (requestCode == 1) {
+            final int scroll_speed = data.getIntExtra(SCROLL_SPEED_KEY, SCROLL_SPEED_DEFAULT);
+            assert scroll_speed >= 1 && scroll_speed <= 10;
+            updateScrollSpeed(scroll_speed);
+        }
+        else if (requestCode == 2) {
             final String name = data.getStringExtra(NAME_KEY);
             final String number = data.getStringExtra(NUMBER_KEY);
             assert name.length() > 0;
             assert number.length() == 10;
             addContact(name, number);
         }
-        else if (requestCode == 2) {
-            final int scroll_speed = data.getIntExtra(SCROLL_SPEED_KEY, SCROLL_SPEED_DEFAULT);
-            assert scroll_speed >= 1 && scroll_speed <= 10;
-            updateScrollSpeed(scroll_speed);
-        }
 
+        Log.e("DATA", mSettings.toString());
+        sendToGlass(mSettings);
         //sendToGlass(mSettings);
     }
 
@@ -235,6 +236,10 @@ public class MainActivity extends Activity {
         final int contact_number = getSharedPreferences(SP_SETTINGS, MODE_PRIVATE).getInt(NUM_CONTACTS_KEY, NUM_CONTACTS_DEFAULT) + 1; // we're adding a contact
         final String name_key = "contact_" + contact_number + "_name";
         final String number_key = "contact_" + contact_number + "_number";
+
+        // error on callers part
+        if (name == null || number == null || name.equals("") || number.equals(""))
+            return;
 
         // insert contact into local storage, update number of contacts
         SharedPreferences.Editor editor = getSharedPreferences(SP_SETTINGS, MODE_PRIVATE).edit();
@@ -255,6 +260,7 @@ public class MainActivity extends Activity {
     public void updateScrollSpeed(final int scroll_speed) {
         getSharedPreferences(SP_SETTINGS, MODE_PRIVATE).edit().putInt(SCROLL_SPEED_KEY, scroll_speed).commit();
         try {
+            Log.e("SETTINGS", "changing scroll speed to " + scroll_speed);
             mSettings.put(SCROLL_SPEED_KEY, scroll_speed);
         } catch (JSONException e) {
             e.printStackTrace();
@@ -367,7 +373,7 @@ public class MainActivity extends Activity {
         try{
             SmsManager smsManager = SmsManager.getDefault();
             smsManager.sendTextMessage(object.getString("number"), null, object.getString("name"), null, null);
-            Log.v(TAG, "SMS sending complete with message: " + object.getString("name") + " " + object.getString("number"));
+            Log.v(TAG, "SMS sending complete with message: " + object.getString("message") + " " + object.getString("number"));
         }
         catch(JSONException j){
             Log.e(TAG, j.toString());
