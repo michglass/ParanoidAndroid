@@ -4,6 +4,7 @@ import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -11,8 +12,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
-import android.hardware.usb.UsbAccessory;
-import android.hardware.usb.UsbManager;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
@@ -41,13 +40,14 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
+import java.io.FileDescriptor;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.ByteBuffer;
 
-//import com.android.future.usb.UsbAccessory;
-//import com.android.future.usb.UsbManager;
+import com.android.future.usb.UsbAccessory;
+import com.android.future.usb.UsbManager;
 
 
 
@@ -56,10 +56,11 @@ public class MainActivity extends Activity {
     // Debug
     private static final String TAG = "Main Activity";
 
-    // Service Variables
+    // Bluetooth Service Variables
     private Messenger mBluetoothServiceMessenger;
     private boolean mBound;
     private final Messenger clientMessenger = new Messenger(new ServiceHandler());
+    private int mConnectionState = BluetoothService.STATE_NONE;
 
     // USB vars
     // Connection has to be permitted by user
@@ -127,19 +128,13 @@ public class MainActivity extends Activity {
 
         setContentView(R.layout.activity_main);
 
-        /**
-         * Service Stuff
-         */
-        // start service
-        startService(new Intent(this, BluetoothService.class));
-
         // USB Stuff
-        //mUsbManager = UsbManager.getInstance(this);
+        mUsbManager = UsbManager.getInstance(this);
         mPermissionIntent = PendingIntent.getBroadcast(this, 0,
                 new Intent(ACTION_USB_PERMISSION), 0);
         IntentFilter intentFilter = new IntentFilter(ACTION_USB_PERMISSION);
         intentFilter.addAction(UsbManager.ACTION_USB_ACCESSORY_DETACHED);
-        //registerReceiver(mUsbReceiver, intentFilter);
+        registerReceiver(mUsbReceiver, intentFilter);
 
         mVibrator = ((Vibrator) getSystemService(VIBRATOR_SERVICE));
         isVibrating = false;
@@ -368,7 +363,7 @@ public class MainActivity extends Activity {
         super.onResume();
 
         if(mInputStream != null) { return; }
-        /*
+
         UsbAccessory[] accessories = mUsbManager.getAccessoryList();
         UsbAccessory accessory = (accessories == null ? null : accessories[0]);
         if(accessory != null) {
@@ -386,7 +381,7 @@ public class MainActivity extends Activity {
                 }
             }
         } else { Log.v(TAG, "Accessory is NULL"); }
-        */
+
     }
     /**
      * On Stop
@@ -398,16 +393,8 @@ public class MainActivity extends Activity {
 
         super.onStop();
 
-        // Unbind from Service
-        if(mBound) {
-            sendMessageToService(BluetoothService.UNREGISTER_CLIENT);
-            unbindService(mConnection);
-            mBound = false;
-        }
-
-        // USB
-        closeAccessory();
-        stopVibrate();
+        // unbind from service
+        unbindBTService();
     }
     /**
      * On Destroy
@@ -419,11 +406,15 @@ public class MainActivity extends Activity {
         super.onDestroy();
 
         // stop service
-        stopService(new Intent(this, BluetoothService.class));
-        BluetoothService.BOUND_COUNT = 0;
+        stopBTService();
+
+
+        // Close the connection to USB Acc
+        closeAccessory();
+        stopVibrate();
 
         // USB
-        //unregisterReceiver(mUsbReceiver);
+        unregisterReceiver(mUsbReceiver);
     }
 
     public void OnButtonClick(View v) {
@@ -448,7 +439,7 @@ public class MainActivity extends Activity {
         Log.v(TAG, "Sending SMS...");
         try{
             SmsManager smsManager = SmsManager.getDefault();
-            smsManager.sendTextMessage(object.getString("number"), null, object.getString("name"), null, null);
+            smsManager.sendTextMessage(object.getString("number"), null, object.getString("message"), null, null);
             Log.v(TAG, "SMS sending complete with message: " + object.getString("message") + " " + object.getString("number"));
         }
         catch(JSONException j){
@@ -479,7 +470,13 @@ public class MainActivity extends Activity {
             mBluetoothServiceMessenger = new Messenger(iBinder);
             mBound = true;
 
+            // contact service for the first time
             setUpMessage();
+
+            // start bluetooth connection if not already connected
+            if(mConnectionState != BluetoothService.STATE_CONNECTED) {
+                startBTService();
+            }
         }
 
         /**
@@ -491,6 +488,15 @@ public class MainActivity extends Activity {
             mBound = false;
         }
     };
+    /**
+     * Start the Bluetooth Service
+     * Called in Service Connected Callback after Activity binds to Service
+     * Start Service only when not already connected
+     */
+    private void startBTService() {
+        // Start the BT Service
+        startService(new Intent(this, BluetoothService.class));
+    }
     /**
      * Send To Glass (1)
      * Send a message(byte array) to glass
@@ -568,6 +574,26 @@ public class MainActivity extends Activity {
         }
     }
     /**
+     * Unbind from BT Service
+     * in On Stop and if connection couldn't be initialized
+     * for example not paired or bt disabled
+     */
+    private void unbindBTService() {
+        // Unbind from Service
+        if(mBound) {
+            sendMessageToService(BluetoothService.UNREGISTER_CLIENT);
+            unbindService(mConnection);
+            mBound = false;
+        }
+    }
+    /**
+     * Stop Service
+     */
+    private void stopBTService() {
+        // stop service
+        stopService(new Intent(this, BluetoothService.class));
+    }
+    /**
      * Message Handler
      * Handles Messages from Glass
      * Messages wrt Connection State or text, int, picture
@@ -583,12 +609,16 @@ public class MainActivity extends Activity {
                 case BluetoothService.MESSAGE_STATE_CHANGE:
                     Toast.makeText(getApplicationContext(),
                             "Connection state changed", Toast.LENGTH_SHORT).show();
+
+                    // update the connection state
+                    mConnectionState = msg.arg1;
+
                     switch (msg.arg1) {
                         case BluetoothService.STATE_CONNECTED:
                             Toast.makeText(getApplicationContext(),
                                     "Connected", Toast.LENGTH_SHORT).show();
 
-                            //TODO send settings to glass
+                            //send settings to glass
                             sendToGlass(mSettings);
                             break;
                         case BluetoothService.STATE_CONNECTING:
@@ -598,6 +628,25 @@ public class MainActivity extends Activity {
                         case BluetoothService.STATE_LISTENING:
                             Toast.makeText(getApplicationContext(),
                                     "Listening", Toast.LENGTH_SHORT).show();
+                            break;
+                        case BluetoothService.BT_DISABLED:
+                            Toast.makeText(getApplicationContext(),
+                                           "Please go to Phone Settings and enable Bluetooth",
+                                           Toast.LENGTH_LONG).show();
+
+                            // unbind from service
+                            unbindBTService();
+                            // stop service
+                            stopBTService();
+                            break;
+                        case BluetoothService.NOT_PAIRED:
+                            Toast.makeText(getApplicationContext(),
+                                           "Please make sure that this phone is only paired to Glass",
+                                           Toast.LENGTH_LONG).show();
+                            // unbind from service
+                            unbindBTService();
+                            // stop service
+                            stopBTService();
                             break;
                         case BluetoothService.STATE_NONE:
                             Toast.makeText(getApplicationContext(),
@@ -634,13 +683,11 @@ public class MainActivity extends Activity {
                     catch(JSONException j){
                         Log.e(TAG, j.toString());
                     }
-                    Log.v(TAG, "Glass Msg: " + (String)msg.obj);
-                    //TODO Rodney: do sth with json string
                     break;
             }
         }
     }
-    /*
+
     private final BroadcastReceiver mUsbReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -663,10 +710,10 @@ public class MainActivity extends Activity {
             }
         }
     };
-    */
+
 
     // open accessory
-    /*
+
     private void openAccessory(UsbAccessory acc) {
 
         mFileDescriptor = mUsbManager.openAccessory(acc);
@@ -681,10 +728,10 @@ public class MainActivity extends Activity {
             Log.v(TAG, "Accessory open");
         } else { Log.v(TAG, "Accessory open fail"); }
     }
-    */
+
     // close accessory
     private void closeAccessory() {
-
+        Log.v(TAG, "Close Accessory");
         try {
             if(mFileDescriptor != null) {
                 mFileDescriptor.close();

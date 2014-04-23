@@ -12,6 +12,7 @@ import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
 import android.util.Log;
+import android.widget.Toast;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -47,6 +48,8 @@ public class BluetoothService extends Service {
     public static final int STATE_LISTENING = 1;
     public static final int STATE_CONNECTING = 2;
     public static final int STATE_CONNECTED = 3;
+    public static final int BT_DISABLED = 15;
+    public static final int NOT_PAIRED = 16;
 
     // Messages send to Client
     public static final int MESSAGE_STATE_CHANGE = 4;
@@ -54,6 +57,8 @@ public class BluetoothService extends Service {
     public static final int MESSAGE_RESTART = 6;
     public static final int WAIT_FOR_CONNECTION = 7;
     public static final int THIS_STOPPED = 8; // (== ANDROID_STOPPED on Glass)
+
+    // Msgs from client
     public static final int REGISTER_CLIENT = 12;
     public static final int UNREGISTER_CLIENT = 13;
 
@@ -68,6 +73,10 @@ public class BluetoothService extends Service {
     private final Messenger mBluetoothServiceMessenger = new Messenger(new ClientHandler());
     private Messenger mClientMessenger; // Messenger to send Messages to Client
     public static int BOUND_COUNT = 0; // indicates how many clients are bound (max = 1)
+
+    // important boolean that make sure that BT is turned on and phone paired to glass
+    private boolean isPaired;
+    private boolean isBTEnabled;
 
     /**
      * Service Methods
@@ -87,10 +96,15 @@ public class BluetoothService extends Service {
         if(!AdapterEnabled()) {
             // Should always be enabled!
             Log.v(TAG, "Bluetooth not enabled");
+
+            isBTEnabled = false;
         } else {
             Log.v(TAG, "Bluetooth already enabled"); // usually on Glass
-            // find paired devices and connect to desired device
-            queryDevices();
+
+            isBTEnabled = true;
+
+            // find paired devices (returns true if it found glass, false otherwise)
+            isPaired = queryDevices();
         }
     }
     /**
@@ -260,11 +274,20 @@ public class BluetoothService extends Service {
 
         // Start thread to connect to device
         // Device is passed to obtain socket and Handler for sending messages to Activity
-        mConnectThread = new ConnectThread(mbtDevice);
-        mConnectThread.start();
 
-        // set state to connecting and send message to activity
-        setState(STATE_CONNECTING);
+        // make sure that bt is enabled and phone is paired with glass
+        if(!isBTEnabled) {
+            setState(BT_DISABLED);
+        } else if(!isPaired) {
+            setState(NOT_PAIRED);
+        } else {
+            // paired and bt enabled, start connecting
+            mConnectThread = new ConnectThread(mbtDevice);
+            mConnectThread.start();
+
+            // set state to connecting and send message to activity
+            setState(STATE_CONNECTING);
+        }
     }
     /**
      * Listen to incoming requests
@@ -375,13 +398,6 @@ public class BluetoothService extends Service {
      */
     public void sendToGlass(byte[] msgForGlass) {
         write(msgForGlass);
-
-      /*  byte[] msgBytes;
-        // convert int to byte array (just 3 bits needed 1 = 001 , 2 = 010)
-        msgBytes = ByteBuffer.allocate(4).putInt(command).array();
-        if(msgBytes == null) Log.v(TAG, "msgBytes NULL");
-        write(msgBytes);
-        Log.v(TAG, "Message: " + command); */
     }
     /**
      * Write
@@ -394,7 +410,6 @@ public class BluetoothService extends Service {
             mConnectedThread.write(out);
         else {
             sendMessageToClient(BluetoothService.WAIT_FOR_CONNECTION);
-            //sendMessageToClient(INT_MESSAGE, BluetoothService.WAIT_FOR_CONNECTION);
         }
     }
 
@@ -417,7 +432,7 @@ public class BluetoothService extends Service {
      * Query Devices
      * Find Glass
      */
-    public void queryDevices() {
+    public boolean queryDevices() {
         Log.v(TAG, "Query devices");
         // get all paired devices
         Set<BluetoothDevice> pairedDevices = mbtAdapter.getBondedDevices();
@@ -431,16 +446,26 @@ public class BluetoothService extends Service {
                         // if device is found save it in member var
                         if (pairedDevices.size() > 1) {
                             Log.e(TAG, "Paired to more than One Device");
+                            return false;
                         } else {
                             mbtDevice = btDevice;
                             Log.v(TAG, "Device Name: " + mbtDevice.getName());
                         }
                     }
-                } else { Log.e(TAG, "Paired Devices > 0"); }
-            } else { Log.e(TAG, "Paired Devices == NULL"); }
+                } else {
+                    Log.e(TAG, "Paired Devices > 0");
+                    return false;
+                }
+            } else {
+                Log.e(TAG, "Paired Devices == NULL");
+                return false;
+            }
         } catch (Exception e) {
             Log.v(TAG, "No devices found");
+            return false;
         }
+        // if none of the exceptions occured, we are paired
+        return true;
     }
     /**
      * Set State
@@ -463,7 +488,7 @@ public class BluetoothService extends Service {
             } catch (RemoteException remE) {
                 Log.e(TAG, "Couldn't contact Client");
             }
-        }
+        } else { Log.e(TAG, "Client Messenger NULL"); }
     }
 
 
