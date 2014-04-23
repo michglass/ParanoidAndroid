@@ -454,6 +454,9 @@ public class BluetoothService extends Service {
                     }
                 } else {
                     Log.e(TAG, "Paired Devices > 0");
+                    for(BluetoothDevice d : pairedDevices) {
+                        Log.v(TAG, d.getName());
+                    }
                     return false;
                 }
             } else {
