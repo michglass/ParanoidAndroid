@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string name="app_name">ParanoidAndroid</string>
+    <string name="app_name">Parrot</string>
 
     <!-- Button for sending Command to Glass ! -->
     <string name="send_ok_glass">OK</string>
-    <string name="title_activity_new_contact">NewContactActivity</string>
+    <string name="title_activity_new_contact">Parrot Contact</string>
     <string name="hello_world">Hello world!</string>
     <string name="action_settings">Settings</string>
-    <string name="title_activity_update_scroll_speed">UpdateScrollSpeedActivity</string>
+    <string name="title_activity_update_scroll_speed">Parrot Speed</string>
 
     <string-array name="settings">
         <item>Change Scroll Speed</item>
@@ -17,6 +17,6 @@
         <item>Cancel</item>
     </string-array>
 
-    <string name="title_activity_new_message">NewMessageActivity</string>
+    <string name="title_activity_new_message">Parrot Message</string>
 
 </resources>
